@@ -53,17 +53,26 @@ func main() {
 
 	included := false
 	// Search up to 3 slots after the duty slot.
-	for i := 1; i <= 3; i++ {
+	for i := 1; i <= 32; i++ {
+		slotToCheck := uint64(attestationSlot) + uint64(i)
+		fmt.Printf("Checking slot %d...\n", slotToCheck)
 		block, err := client.(eth2client.SignedBeaconBlockProvider).SignedBeaconBlock(ctx, &api.SignedBeaconBlockOpts{
-			Block: fmt.Sprintf("%d", attestationSlot), //says block but its slot actually
+			Block: fmt.Sprintf("%d", slotToCheck),
 		})
-		if err != nil || block == nil {
+		if err != nil || block == nil || block.Data == nil {
 			continue
 		}
 
-		attestations := block.Data.Phase0.Message.Body.Attestations
+		// Get Electra block data
+		electraBlock := block.Data.Electra
+		if electraBlock == nil {
+			continue // no electra block data
+		}
+
+		fmt.Printf("Found block for slot %d (electra block slot: %d)\n", slotToCheck, electraBlock.Message.Slot)
+
+		attestations := electraBlock.Message.Body.Attestations
 		for _, att := range attestations {
-			// Check if attestation matches the duty slot and committee
 			if att.Data.Slot == attestationSlot && att.Data.Index == attestationCommitteeIndex {
 				aggregationBits := att.AggregationBits
 				byteIndex := attestationCommitteePosition / 8
@@ -71,8 +80,8 @@ func main() {
 				if int(byteIndex) < len(aggregationBits) {
 					bit := (aggregationBits[int(byteIndex)] >> bitIndex) & 1
 					if bit == 1 {
+						fmt.Printf("✅ Validator's attestation was included in block at slot %d!\n", slotToCheck)
 						included = true
-						fmt.Printf("✅ Validator's attestation was included in block at slot %d!\n", attestationSlot)
 						break
 					}
 				}
