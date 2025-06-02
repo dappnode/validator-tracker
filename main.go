@@ -45,9 +45,48 @@ func main() {
 		return
 	}
 
+	fmt.Println("Attestation Duties complete:", attestationDuties)
 	attestationSlot := attestationDuties.Data[0].Slot                     // phase0.Slot
 	attestationCommitteeIndex := attestationDuties.Data[0].CommitteeIndex // phase0.CommitteeIndex
-
+	attestationCommitteePosition := attestationDuties.Data[0].ValidatorCommitteeIndex
 	fmt.Printf("Attestation Slot: %d, Committee Index: %d\n", attestationSlot, attestationCommitteeIndex)
+
+	included := false
+	// Search up to 3 slots after the duty slot.
+	for i := 1; i <= 3; i++ {
+		block, err := client.(eth2client.SignedBeaconBlockProvider).SignedBeaconBlock(ctx, &api.SignedBeaconBlockOpts{
+			Block: fmt.Sprintf("%d", attestationSlot), //says block but its slot actually
+		})
+		if err != nil || block == nil {
+			continue
+		}
+
+		attestations := block.Data.Phase0.Message.Body.Attestations
+		for _, att := range attestations {
+			// Check if attestation matches the duty slot and committee
+			if att.Data.Slot == attestationSlot && att.Data.Index == attestationCommitteeIndex {
+				aggregationBits := att.AggregationBits
+				byteIndex := attestationCommitteePosition / 8
+				bitIndex := attestationCommitteePosition % 8
+				if int(byteIndex) < len(aggregationBits) {
+					bit := (aggregationBits[int(byteIndex)] >> bitIndex) & 1
+					if bit == 1 {
+						included = true
+						fmt.Printf("✅ Validator's attestation was included in block at slot %d!\n", attestationSlot)
+						break
+					}
+				}
+			}
+		}
+		if included {
+			break
+		}
+	}
+
+	if included {
+		fmt.Println("✅ Validator attested successfully!")
+	} else {
+		fmt.Println("❌ Validator missed attestation duty in this finalized epoch.")
+	}
 
 }
