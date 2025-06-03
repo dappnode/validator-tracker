@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/attestantio/go-eth2-client/api"
@@ -11,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-const validatorIndex = 480347 // Replace with the actual validator index you want to query
+const validatorIndex = 480349 // Replace with the actual validator index you want to query
 
 func main() {
 	// Provide a cancellable context to the creation function.
@@ -56,7 +57,7 @@ func main() {
 	ValidatorCommitteeIdx := validatorDuties.Data[0].ValidatorCommitteeIndex
 	slotToAttest := validatorDuties.Data[0].Slot
 
-	fmt.Printf("Validator %d is in committee %d at slot %d and validator committee index %d \n",
+	fmt.Printf("Validator %d is in committee %d, has to attest for the slot %d and its validator committee index is %d \n",
 		validatorIndex, committeeIndex, slotToAttest, ValidatorCommitteeIdx)
 
 	// Retrieve all beacon committees defined for the slotToAttest
@@ -77,13 +78,14 @@ func main() {
 			continue
 		}
 		committeeSizeMap[committee.Index] = len(committee.Validators)
+		// fmt.Printf("Committee %d has %d validators\n", committee.Index, len(committee.Validators))
 	}
 	// Print the committee sizes for debuggin
 
 	// Get the attestations for the slots slotToAttest +1 to slotToAttest + 4
 	// This is overkill. The attestant library doesnt have an endpoint to get only the attestations for a specific slot, we have to get the full slot block.
-	// loop over slots slotToAttest+1 to slotToAttest+4 and perform the check
-	for slot := slotToAttest + 1; slot <= slotToAttest+4; slot++ {
+	// loop over slots slotToAttest+1 to slotToAttest+32 and perform the check
+	for slot := slotToAttest + 1; slot <= slotToAttest+32; slot++ {
 		fullBlock, err := consensusClient.SignedBeaconBlock(context.Background(),
 			&api.SignedBeaconBlockOpts{
 				Block: fmt.Sprintf("%d", slot),
@@ -113,11 +115,21 @@ func main() {
 				continue
 			}
 
-			// Calculate bit position in aggregation bits
+			// Sort committee indices
+			var indices []phase0.CommitteeIndex
+			for index := range committeeSizeMap {
+
+				indices = append(indices, index)
+			}
+			sort.Slice(indices, func(i, j int) bool {
+				return indices[i] < indices[j]
+			})
+
+			// Compute offset by iterating in order
 			bitPosition := 0
-			for index, size := range committeeSizeMap {
+			for _, index := range indices {
 				if index < committeeIndex {
-					bitPosition += size
+					bitPosition += committeeSizeMap[index]
 				}
 			}
 			bitPosition += int(ValidatorCommitteeIdx)
