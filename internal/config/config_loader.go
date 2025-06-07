@@ -21,7 +21,7 @@ func LoadConfig() Config {
 	}
 
 	// Build the dynamic endpoints
-	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.staker.dappnode:3500", network)
+	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.dncore.dappnode:3500", network)
 	web3SignerEndpoint := fmt.Sprintf("http://web3signer.web3signer-%s.dappnode:9000", network)
 
 	// Allow override via environment variables
