@@ -1,0 +1,46 @@
+package config
+
+import (
+	"fmt"
+	"os"
+	"strings"
+
+	"github.com/dappnode/validator-tracker/internal/logger"
+)
+
+type Config struct {
+	BeaconEndpoint     string
+	Web3SignerEndpoint string
+	Network            string
+}
+
+func LoadConfig() Config {
+	network := os.Getenv("NETWORK")
+	if network == "" {
+		network = "hoodi" // default
+	}
+
+	// Build the dynamic endpoints
+	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.staker.dappnode:3500", network)
+	web3SignerEndpoint := fmt.Sprintf("http://web3signer.web3signer-%s.dappnode:9000", network)
+
+	// Allow override via environment variables
+	if envBeacon := os.Getenv("BEACON_ENDPOINT"); envBeacon != "" {
+		beaconEndpoint = envBeacon
+	}
+	if envWeb3Signer := os.Getenv("WEB3SIGNER_ENDPOINT"); envWeb3Signer != "" {
+		web3SignerEndpoint = envWeb3Signer
+	}
+
+	// Normalize network name for logs
+	network = strings.ToLower(network)
+	if network != "hoodi" && network != "holesky" && network != "mainnet" {
+		logger.Fatal("Unknown network: %s", network)
+	}
+
+	return Config{
+		BeaconEndpoint:     beaconEndpoint,
+		Web3SignerEndpoint: web3SignerEndpoint,
+		Network:            network,
+	}
+}
