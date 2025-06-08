@@ -16,7 +16,8 @@ type AttestationChecker struct {
 	ValidatorIndices []domain.ValidatorIndex
 	PollInterval     time.Duration
 
-	lastFinalizedEpoch domain.Epoch // Track last seen finalized epoch
+	lastFinalizedEpoch domain.Epoch
+	CheckedValidators  map[domain.ValidatorIndex]domain.Epoch
 }
 
 func (a *AttestationChecker) Run(ctx context.Context) {
@@ -41,30 +42,48 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 		return
 	}
 
-	// Update last seen finalized epoch
-	a.lastFinalizedEpoch = finalizedEpoch
-	logger.Info("New finalized epoch %d detected. Checking attestations for %d validators...", finalizedEpoch, len(a.ValidatorIndices))
+	// If finalized epoch is same as last seen, skip execution
+	if finalizedEpoch == a.lastFinalizedEpoch {
+		logger.Debug("Finalized epoch %d unchanged, skipping check.", finalizedEpoch)
+		return
+	}
 
-	// Fetch all validator duties in a single call
-	duties, err := a.BeaconAdapter.GetValidatorDutiesBatch(ctx, finalizedEpoch, a.ValidatorIndices)
+	logger.Info("New finalized epoch %d detected. Checking attestations for validators...", finalizedEpoch)
+	a.lastFinalizedEpoch = finalizedEpoch
+
+	// Determine which validators still need checking for this epoch
+	var validatorsToCheck []domain.ValidatorIndex
+	for _, index := range a.ValidatorIndices {
+		// Skip if already confirmed
+		if epoch, ok := a.CheckedValidators[index]; ok && epoch == finalizedEpoch {
+			logger.Debug("Duties of validator %d already successfully checked for epoch %d. Skipping.", index, finalizedEpoch)
+			continue
+		}
+		validatorsToCheck = append(validatorsToCheck, index)
+	}
+
+	// If no validators to check, skip
+	if len(validatorsToCheck) == 0 {
+		logger.Info("All validators already checked for epoch %d. Skipping.", finalizedEpoch)
+		return
+	}
+
+	// Fetch all duties in batch
+	duties, err := a.BeaconAdapter.GetValidatorDutiesBatch(ctx, finalizedEpoch, validatorsToCheck)
 	if err != nil {
 		logger.Error("Error fetching validator duties: %v", err)
 		return
 	}
 
-	// Results map to track if each validator attested
-	attestationResults := make(map[domain.ValidatorIndex]bool)
-
-	// TODO: careful setting duty as missed if program is interrupted here
+	// For each duty, check attestation inclusion
 	for _, duty := range duties {
-		logger.Info("Checking duties for validator %d in committee %d for slot %d", duty.ValidatorIndex, duty.CommitteeIndex, duty.Slot)
 		committeeSizeMap, err := a.BeaconAdapter.GetCommitteeSizeMap(ctx, duty.Slot)
 		if err != nil {
 			logger.Warn("Error fetching committee sizes for slot %d: %v", duty.Slot, err)
-			continue
+			continue // skip this validator and try again in next round
 		}
-		logger.Info("comitee gotten")
-		found := false
+
+		attestationFound := false
 		for slot := duty.Slot + 1; slot <= duty.Slot+32; slot++ {
 			attestations, err := a.BeaconAdapter.GetBlockAttestations(ctx, slot)
 			if err != nil {
@@ -79,32 +98,31 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 				if !isBitSet(att.CommitteeBits, int(duty.CommitteeIndex)) {
 					continue
 				}
-
 				bitPosition := computeBitPosition(duty.CommitteeIndex, duty.ValidatorCommitteeIdx, committeeSizeMap)
 				if !isBitSet(att.AggregationBits, bitPosition) {
 					continue
 				}
 
-				found = true
-				logger.Info("✅ Found attestation for validator %d in committee %d for slot %d (included in block %d)",
+				// ✅ Attestation found!
+				logger.Info("✅ Validator %d attested in committee %d for slot %d (included in block %d)",
 					duty.ValidatorIndex, duty.CommitteeIndex, duty.Slot, slot)
+				attestationFound = true
 				break
 			}
-			if found {
+			if attestationFound {
 				break
 			}
 		}
-		attestationResults[duty.ValidatorIndex] = found
-	}
 
-	// Summary report
-	logger.Info("Attestation summary for finalized epoch %d:", finalizedEpoch)
-	for _, idx := range a.ValidatorIndices {
-		if attestationResults[idx] {
-			logger.Info("✅ Validator %d attested successfully", idx)
-		} else {
-			logger.Warn("❌ Validator %d missed attestation", idx)
+		if !attestationFound {
+			// We could send a notification here -- for now, just log it
+			logger.Warn(" ❌ No attestation found for validator %d in finalized epoch %d. Checked %d aggregated attestations", duty.ValidatorIndex, finalizedEpoch)
+
 		}
+
+		// ✅ Mark validator as checked for this epoch regardless of attestation presence
+		// We assume that if we reach this point, the validator's duties were successfully checked
+		a.CheckedValidators[duty.ValidatorIndex] = finalizedEpoch
 	}
 }
 

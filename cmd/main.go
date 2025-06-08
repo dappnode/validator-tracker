@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/dappnode/validator-tracker/internal/adapters"
+	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/services"
 	"github.com/dappnode/validator-tracker/internal/config"
 	"github.com/dappnode/validator-tracker/internal/logger"
@@ -49,9 +50,10 @@ func main() {
 	// Start the attestation checker service in a goroutine
 	logger.Info("Starting attestation checker for %d validators", len(indices))
 	checker := &services.AttestationChecker{
-		BeaconAdapter:    adapter,
-		ValidatorIndices: indices,
-		PollInterval:     1 * time.Minute,
+		BeaconAdapter:     adapter,
+		ValidatorIndices:  indices,
+		PollInterval:      1 * time.Minute,
+		CheckedValidators: make(map[domain.ValidatorIndex]domain.Epoch),
 	}
 	wg.Add(1)
 	go func() {
