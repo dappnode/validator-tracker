@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"slices"
-
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/ports"
 	"github.com/dappnode/validator-tracker/internal/logger"
@@ -77,17 +75,22 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 
 	// For each duty, check attestation inclusion
 	for _, duty := range duties {
-		committeeSizeMap, err := a.BeaconAdapter.GetCommitteeSizeMap(ctx, duty.Slot)
-		if err != nil {
-			logger.Warn("Error fetching committee sizes for slot %d: %v", duty.Slot, err)
-			continue // skip this validator and try again in next round
-		}
-
 		attestationFound := false
+
+		logger.Debug("Checking duty for validator %d in committee %d of slot %d",
+			duty.ValidatorIndex, duty.CommitteeIndex, duty.Slot)
+
+		// Check up to 32 slots after the duty slot
 		for slot := duty.Slot + 1; slot <= duty.Slot+32; slot++ {
 			attestations, err := a.BeaconAdapter.GetBlockAttestations(ctx, slot)
 			if err != nil {
 				logger.Warn("Error fetching attestations for slot %d: %v", slot, err)
+				continue
+			}
+			// Fetch committee sizes for this block slot
+			committeeSizeMap, err := a.BeaconAdapter.GetCommitteeSizeMap(ctx, slot)
+			if err != nil {
+				logger.Warn("Error fetching committee sizes for slot %d: %v", slot, err)
 				continue
 			}
 
@@ -98,51 +101,64 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 				if !isBitSet(att.CommitteeBits, int(duty.CommitteeIndex)) {
 					continue
 				}
-				bitPosition := computeBitPosition(duty.CommitteeIndex, duty.ValidatorCommitteeIdx, committeeSizeMap)
+
+				// 🟩 Compute bit position dynamically based on committeeBits
+				bitPosition := computeBitPosition(
+					duty.CommitteeIndex,
+					duty.ValidatorCommitteeIdx,
+					att.CommitteeBits,
+					committeeSizeMap,
+				)
+
 				if !isBitSet(att.AggregationBits, bitPosition) {
+					logger.Debug(" ❌ Validator %d not included in attestation for committee %d at slot %d (bit position %d).",
+						duty.ValidatorIndex, duty.CommitteeIndex, slot, bitPosition)
 					continue
 				}
 
 				// ✅ Attestation found!
-				logger.Info("✅ Validator %d attested in committee %d for slot %d (included in block %d)",
+				logger.Info("✅ Validator %d attested in committee %d for duty slot %d (included in block slot %d)",
 					duty.ValidatorIndex, duty.CommitteeIndex, duty.Slot, slot)
 				attestationFound = true
-				break
+				break // Found; no need to check more attestations in this block
 			}
 			if attestationFound {
-				break
+				break // Move on to next validator
 			}
 		}
 
 		if !attestationFound {
-			// We could send a notification here -- for now, just log it
-			logger.Warn(" ❌ No attestation found for validator %d in finalized epoch %d. Checked %d aggregated attestations", duty.ValidatorIndex, finalizedEpoch)
-
+			logger.Warn(" ❌ No attestation found for validator %d in finalized epoch %d",
+				duty.ValidatorIndex, finalizedEpoch)
 		}
 
-		// ✅ Mark validator as checked for this epoch regardless of attestation presence
-		// We assume that if we reach this point, the validator's duties were successfully checked
+		// Mark validator as checked for this epoch
 		a.CheckedValidators[duty.ValidatorIndex] = finalizedEpoch
 	}
 }
 
-func computeBitPosition(committeeIndex domain.CommitteeIndex, validatorCommitteeIdx uint64, committeeSizeMap domain.CommitteeSizeMap) int {
-	indices := make([]domain.CommitteeIndex, 0, len(committeeSizeMap))
-	for index := range committeeSizeMap {
-		indices = append(indices, index)
-	}
-	slices.Sort(indices)
-
+// Compute the bit position of the validator in the aggregation_bits
+func computeBitPosition(
+	validatorCommitteeIndex domain.CommitteeIndex,
+	validatorIndexInCommittee uint64,
+	committeeBits []byte,
+	committeeSizeMap domain.CommitteeSizeMap,
+) int {
 	bitPosition := 0
-	for _, index := range indices {
-		if index < committeeIndex {
-			bitPosition += committeeSizeMap[index]
+	for i := 0; i < 64; i++ {
+		if !isBitSet(committeeBits, i) {
+			continue
 		}
+		if i == int(validatorCommitteeIndex) {
+			break
+		}
+		bitPosition += committeeSizeMap[domain.CommitteeIndex(i)]
 	}
-	bitPosition += int(validatorCommitteeIdx)
+	bitPosition += int(validatorIndexInCommittee)
 	return bitPosition
 }
 
+// isBitSet checks if a bit at a particular index is set in a bitfield
 func isBitSet(bits []byte, index int) bool {
 	byteIndex := index / 8
 	bitIndex := index % 8
