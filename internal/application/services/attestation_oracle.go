@@ -88,7 +88,7 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 				continue
 			}
 			// Fetch committee sizes for this block slot
-			committeeSizeMap, err := a.BeaconAdapter.GetCommitteeSizeMap(ctx, slot)
+			committeeSizeMap, err := a.BeaconAdapter.GetCommitteeSizeMap(ctx, duty.Slot)
 			if err != nil {
 				logger.Warn("Error fetching committee sizes for slot %d: %v", slot, err)
 				continue
