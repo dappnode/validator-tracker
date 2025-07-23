@@ -50,10 +50,10 @@ func main() {
 	// Start the attestation checker service in a goroutine
 	logger.Info("Starting attestation checker for %d validators", len(indices))
 	checker := &services.AttestationChecker{
-		BeaconAdapter:     adapter,
-		ValidatorIndices:  indices,
-		PollInterval:      1 * time.Minute,
-		CheckedValidators: make(map[domain.ValidatorIndex]domain.Epoch),
+		BeaconAdapter:    adapter,
+		ValidatorIndices: indices,
+		PollInterval:     1 * time.Minute,
+		CheckedEpochs:    make(map[domain.ValidatorIndex]domain.Epoch),
 	}
 	wg.Add(1)
 	go func() {
