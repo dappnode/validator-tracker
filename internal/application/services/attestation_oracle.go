@@ -10,9 +10,9 @@ import (
 )
 
 type AttestationChecker struct {
-	BeaconAdapter    ports.BeaconChainAdapter
-	ValidatorIndices []domain.ValidatorIndex
-	PollInterval     time.Duration
+	BeaconAdapter     ports.BeaconChainAdapter
+	Web3SignerAdapter ports.Web3SignerAdapter
+	PollInterval      time.Duration
 
 	lastFinalizedEpoch domain.Epoch
 	CheckedEpochs      map[domain.ValidatorIndex]domain.Epoch // latest epoch checked for each validator index
@@ -39,16 +39,28 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 		logger.Error("Error fetching finalized epoch: %v", err)
 		return
 	}
-
 	if finalizedEpoch == a.lastFinalizedEpoch {
 		logger.Debug("Finalized epoch %d unchanged, skipping check.", finalizedEpoch)
 		return
 	}
 
 	a.lastFinalizedEpoch = finalizedEpoch
-	logger.Info("New finalized epoch %d detected. Checking attestations for validators...", finalizedEpoch)
+	logger.Info("New finalized epoch %d detected.", finalizedEpoch)
 
-	validatorIndices := a.getValidatorsToCheck(finalizedEpoch)
+	pubkeys, err := a.Web3SignerAdapter.GetValidatorPubkeys()
+	if err != nil {
+		logger.Error("Error fetching pubkeys from web3signer: %v", err)
+		return
+	}
+
+	indices, err := a.BeaconAdapter.GetValidatorIndicesByPubkeys(ctx, pubkeys)
+	if err != nil {
+		logger.Error("Error fetching validator indices from beacon node: %v", err)
+		return
+	}
+	logger.Info("Found %d validator indices active", len(indices))
+
+	validatorIndices := a.getValidatorsToCheck(indices, finalizedEpoch)
 	if len(validatorIndices) == 0 {
 		return
 	}
@@ -58,8 +70,6 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 		logger.Error("Error fetching validator duties: %v", err)
 		return
 	}
-
-	// This should never happen, we got here if we had no errors getting validator duties and there are validators to check.
 	if len(duties) == 0 {
 		logger.Warn("No duties found for finalized epoch %d. This should not happen!", finalizedEpoch)
 		return
@@ -80,9 +90,9 @@ func (a *AttestationChecker) checkLatestFinalizedEpoch(ctx context.Context) {
 	}
 }
 
-func (a *AttestationChecker) getValidatorsToCheck(epoch domain.Epoch) []domain.ValidatorIndex {
+func (a *AttestationChecker) getValidatorsToCheck(indices []domain.ValidatorIndex, epoch domain.Epoch) []domain.ValidatorIndex {
 	var result []domain.ValidatorIndex
-	for _, index := range a.ValidatorIndices {
+	for _, index := range indices {
 		if a.wasCheckedThisEpoch(index, epoch) {
 			continue
 		}
