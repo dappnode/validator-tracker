@@ -185,3 +185,44 @@ func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context
 	}
 	return indices, nil
 }
+
+// GetProposerDuties retrieves proposer duties for the given epoch and validator indices.
+func (b *beaconAttestantClient) GetProposerDuties(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) ([]domain.ProposerDuty, error) {
+	var beaconIndices []phase0.ValidatorIndex
+	for _, idx := range indices {
+		beaconIndices = append(beaconIndices, phase0.ValidatorIndex(idx))
+	}
+
+	resp, err := b.client.ProposerDuties(ctx, &api.ProposerDutiesOpts{
+		Epoch:   phase0.Epoch(epoch),
+		Indices: beaconIndices,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var duties []domain.ProposerDuty
+	for _, d := range resp.Data {
+		duties = append(duties, domain.ProposerDuty{
+			Slot:           domain.Slot(d.Slot),
+			ValidatorIndex: domain.ValidatorIndex(d.ValidatorIndex),
+		})
+	}
+	return duties, nil
+}
+
+// DidProposeBlock checks a given slot includes a block proposed
+func (b *beaconAttestantClient) DidProposeBlock(ctx context.Context, slot domain.Slot) (bool, error) {
+	block, err := b.client.SignedBeaconBlock(ctx, &api.SignedBeaconBlockOpts{
+		Block: fmt.Sprintf("%d", slot),
+	})
+	if err != nil {
+		// TODO: are we sure we can assume that a 404 means the block was not proposed?
+		// What error code is returned in all consensus if the block is not in their state?
+		if apiErr, ok := err.(*api.Error); ok && apiErr.StatusCode == 404 {
+			return false, nil // Block was not proposed
+		}
+		return false, err // Real error
+	}
+	return block != nil && block.Data != nil, nil
+}
