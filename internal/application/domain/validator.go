@@ -5,7 +5,6 @@ type Slot uint64
 type ValidatorIndex uint64
 type CommitteeIndex uint64
 
-// domain/domain.go
 type ValidatorDuty struct {
 	Slot                  Slot
 	CommitteeIndex        CommitteeIndex
