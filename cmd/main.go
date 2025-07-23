@@ -47,9 +47,9 @@ func main() {
 	defer cancel()
 	var wg sync.WaitGroup
 
-	// Start the attestation checker service in a goroutine
-	logger.Info("Starting attestation checker for %d validators", len(indices))
-	checker := &services.AttestationChecker{
+	// Start the duties checker service in a goroutine
+	logger.Info("Starting duties checker for %d validators", len(indices))
+	dutiesChecker := &services.DutiesChecker{
 		BeaconAdapter:     adapter,
 		Web3SignerAdapter: web3Signer,
 		PollInterval:      1 * time.Minute,
@@ -58,7 +58,7 @@ func main() {
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		checker.Run(ctx)
+		dutiesChecker.Run(ctx)
 	}()
 
 	// Handle graceful shutdown

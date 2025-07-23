@@ -13,4 +13,7 @@ type BeaconChainAdapter interface {
 	GetCommitteeSizeMap(ctx context.Context, slot domain.Slot) (domain.CommitteeSizeMap, error)
 	GetBlockAttestations(ctx context.Context, slot domain.Slot) ([]domain.Attestation, error)
 	GetValidatorIndicesByPubkeys(ctx context.Context, pubkeys []string) ([]domain.ValidatorIndex, error)
+
+	GetProposerDuties(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) ([]domain.ProposerDuty, error)
+	DidProposeBlock(ctx context.Context, slot domain.Slot) (bool, error)
 }
