@@ -81,6 +81,11 @@ func (a *DutiesChecker) checkProposals(
 		return
 	}
 
+	if len(proposerDuties) == 0 {
+		logger.Warn("No proposer duties found for finalized epoch %d.", finalizedEpoch)
+		return
+	}
+
 	for _, duty := range proposerDuties {
 		didPropose, err := a.BeaconAdapter.DidProposeBlock(ctx, duty.Slot)
 		if err != nil {
