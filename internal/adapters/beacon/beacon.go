@@ -235,7 +235,6 @@ func (b *beaconAttestantClient) DidProposeBlock(ctx context.Context, slot domain
 	return block != nil && block.Data != nil, nil
 }
 
-
 func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) (map[domain.ValidatorIndex]bool, error) {
 	// Convert to phase0.ValidatorIndex
 	var beaconIndices []phase0.ValidatorIndex
@@ -256,6 +255,7 @@ func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch
 		livenessMap[domain.ValidatorIndex(v.Index)] = v.IsLive
 	}
 	return livenessMap, nil
+}
 
 // enum for consensus client
 type ConsensusClient string

@@ -8,7 +8,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dappnode/validator-tracker/internal/adapters"
+	"github.com/dappnode/validator-tracker/internal/adapters/beacon"
+	"github.com/dappnode/validator-tracker/internal/adapters/web3signer"
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/services"
 	"github.com/dappnode/validator-tracker/internal/config"
@@ -22,7 +23,7 @@ func main() {
 		cfg.Network, cfg.BeaconEndpoint, cfg.Web3SignerEndpoint)
 
 	// Fetch validator pubkeys
-	web3Signer := adapters.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
+	web3Signer := web3signer.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
 	pubkeys, err := web3Signer.GetValidatorPubkeys()
 	if err != nil {
 		logger.Fatal("Failed to get validator pubkeys from web3signer: %v", err)
@@ -30,7 +31,7 @@ func main() {
 	logger.Info("Fetched %d pubkeys from web3signer", len(pubkeys))
 
 	// Initialize beacon chain adapter
-	adapter, err := adapters.NewBeaconAttestantAdapter(cfg.BeaconEndpoint)
+	adapter, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
 	if err != nil {
 		logger.Fatal("Failed to initialize beacon adapter: %v", err)
 	}

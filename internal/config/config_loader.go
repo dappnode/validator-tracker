@@ -12,6 +12,8 @@ type Config struct {
 	BeaconEndpoint     string
 	Web3SignerEndpoint string
 	Network            string
+	DnpName            string
+	BeaconchaUrl       string
 }
 
 func LoadConfig() Config {
@@ -34,13 +36,38 @@ func LoadConfig() Config {
 
 	// Normalize network name for logs
 	network = strings.ToLower(network)
-	if network != "hoodi" && network != "holesky" && network != "mainnet" {
+	if network != "hoodi" && network != "holesky" && network != "mainnet" && network != "gnosis" && network != "lukso" {
 		logger.Fatal("Unknown network: %s", network)
+	}
+
+	var dnpName string
+	if network == "mainnet" {
+		dnpName = "web3signer.dnp.dappnode.eth"
+	} else {
+		dnpName = fmt.Sprintf("web3signer-%s.dnp.dappnode.eth", network)
+	}
+
+	var beaconchaUrl string
+	switch network {
+	case "mainnet":
+		beaconchaUrl = "https://beaconcha.in"
+	case "holesky":
+		beaconchaUrl = "https://holesky.beaconcha.in"
+	case "hoodi":
+		beaconchaUrl = "https://hoodi.beaconcha.in"
+	case "gnosis":
+		beaconchaUrl = "https://gnosischa.in"
+	case "lukso":
+		beaconchaUrl = "https://explorer.consensus.mainnet.lukso.network"
+	default:
+		logger.Fatal("Unsupported network for beaconcha URL: %s", network)
 	}
 
 	return Config{
 		BeaconEndpoint:     beaconEndpoint,
 		Web3SignerEndpoint: web3SignerEndpoint,
 		Network:            network,
+		DnpName:            dnpName,
+		BeaconchaUrl:       beaconchaUrl,
 	}
 }
