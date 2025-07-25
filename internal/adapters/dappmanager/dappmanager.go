@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+
+	"github.com/dappnode/validator-tracker/internal/application/domain"
 )
 
 // DappManagerAdapter is the adapter to interact with the DappManager API
@@ -44,11 +46,29 @@ type CustomEndpoint struct {
 	} `json:"metric,omitempty"`
 }
 
-// Notifications:
-// - Missed attestations
-// - Missed block proposals
-// - Missed sync committee duties (TODO)
-// - Validator slashed
+// GetNotificationsEnabled retrieves the notifications from the DappManager API
+func (d *DappManagerAdapter) GetNotificationsEnabled(ctx context.Context) (map[string]bool, error) {
+	customEndpoints, err := d.getSignerManifestNotifications(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get notifications from signer manifest: %w", err)
+	}
+
+	// Build a set of valid correlation IDs from domain.ValidatorNotification
+	validCorrelationIDs := map[string]struct{}{
+		string(domain.ValidatorLiveness): {},
+		string(domain.ValidatorSlashed):  {},
+		string(domain.BlockProposed):     {},
+	}
+
+	notifications := make(map[string]bool)
+	for _, endpoint := range customEndpoints {
+		if _, ok := validCorrelationIDs[endpoint.CorrelationId]; ok {
+			notifications[endpoint.CorrelationId] = endpoint.Enabled
+		}
+	}
+
+	return notifications, nil
+}
 
 // getSignerManifestNotifications gets the notifications from the Signer package manifest
 func (d *DappManagerAdapter) getSignerManifestNotifications(ctx context.Context) ([]CustomEndpoint, error) {

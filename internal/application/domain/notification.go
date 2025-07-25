@@ -4,8 +4,7 @@ package domain
 type ValidatorNotification string
 
 const (
-	ValidatorOffline ValidatorNotification = "validator-offline"
-	ValidatorOnline  ValidatorNotification = "validator-online"
-	ValidatorSlashed ValidatorNotification = "validator-slashed"
-	BlockProposed    ValidatorNotification = "block-proposed"
+	ValidatorLiveness ValidatorNotification = "validator-liveness" // online/offline
+	ValidatorSlashed  ValidatorNotification = "validator-slashed"
+	BlockProposed     ValidatorNotification = "block-proposed"
 )
