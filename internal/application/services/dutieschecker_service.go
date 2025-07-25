@@ -124,6 +124,11 @@ func (a *DutiesChecker) checkProposals(
 		return
 	}
 
+	if len(proposerDuties) == 0 {
+		logger.Warn("No proposer duties for any validators in epoch %d", epochToTrack)
+		return
+	}
+
 	for _, duty := range proposerDuties {
 		didPropose, err := a.BeaconAdapter.DidProposeBlock(ctx, duty.Slot)
 		if err != nil {
