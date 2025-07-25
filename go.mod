@@ -3,7 +3,7 @@ module github.com/dappnode/validator-tracker
 go 1.24.3
 
 require (
-	github.com/attestantio/go-eth2-client v0.25.2
+	github.com/attestantio/go-eth2-client v0.26.0
 	github.com/rs/zerolog v1.34.0
 )
 

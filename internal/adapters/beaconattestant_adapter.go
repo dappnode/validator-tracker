@@ -51,6 +51,15 @@ func (b *beaconAttestantClient) GetFinalizedEpoch(ctx context.Context) (domain.E
 	return domain.Epoch(finality.Data.Finalized.Epoch), nil
 }
 
+// GetJustifiedEpoch retrieves the latest finalized epoch from the beacon chain.
+func (b *beaconAttestantClient) GetJustifiedEpoch(ctx context.Context) (domain.Epoch, error) {
+	finality, err := b.client.Finality(ctx, &api.FinalityOpts{State: "head"})
+	if err != nil {
+		return 0, err
+	}
+	return domain.Epoch(finality.Data.Justified.Epoch), nil
+}
+
 // internal/adapters/beaconchain_adapter.go
 func (b *beaconAttestantClient) GetValidatorDutiesBatch(ctx context.Context, epoch domain.Epoch, validatorIndices []domain.ValidatorIndex) ([]domain.ValidatorDuty, error) {
 	// Convert to phase0.ValidatorIndex
@@ -225,4 +234,26 @@ func (b *beaconAttestantClient) DidProposeBlock(ctx context.Context, slot domain
 		return false, err // Real error
 	}
 	return block != nil && block.Data != nil, nil
+}
+
+func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) (map[domain.ValidatorIndex]bool, error) {
+	// Convert to phase0.ValidatorIndex
+	var beaconIndices []phase0.ValidatorIndex
+	for _, idx := range indices {
+		beaconIndices = append(beaconIndices, phase0.ValidatorIndex(idx))
+	}
+
+	liveness, err := b.client.ValidatorLiveness(ctx, &api.ValidatorLivenessOpts{
+		Epoch:   phase0.Epoch(epoch),
+		Indices: beaconIndices,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	livenessMap := make(map[domain.ValidatorIndex]bool)
+	for _, v := range liveness.Data {
+		livenessMap[domain.ValidatorIndex(v.Index)] = v.IsLive
+	}
+	return livenessMap, nil
 }
