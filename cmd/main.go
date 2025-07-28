@@ -12,6 +12,7 @@ import (
 	"github.com/dappnode/validator-tracker/internal/adapters/dappmanager"
 	"github.com/dappnode/validator-tracker/internal/adapters/notifier"
 	"github.com/dappnode/validator-tracker/internal/adapters/web3signer"
+	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/services"
 	"github.com/dappnode/validator-tracker/internal/config"
 	"github.com/dappnode/validator-tracker/internal/logger"
@@ -46,11 +47,12 @@ func main() {
 
 	// Start the duties checker service in a goroutine
 	dutiesChecker := &services.DutiesChecker{
-		Beacon:       beacon,
-		Signer:       web3Signer,
-		Notifier:     notifier,
-		Dappmanager:  dappmanager,
-		PollInterval: 1 * time.Minute,
+		Beacon:          beacon,
+		Signer:          web3Signer,
+		Notifier:        notifier,
+		Dappmanager:     dappmanager,
+		PollInterval:    1 * time.Minute,
+		SlashedNotified: make(map[domain.ValidatorIndex]bool),
 	}
 	wg.Add(1)
 	go func() {
