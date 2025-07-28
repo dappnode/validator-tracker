@@ -9,16 +9,14 @@ import (
 	"time"
 
 	"github.com/dappnode/validator-tracker/internal/adapters/beacon"
+	"github.com/dappnode/validator-tracker/internal/adapters/brain"
 	"github.com/dappnode/validator-tracker/internal/adapters/dappmanager"
 	"github.com/dappnode/validator-tracker/internal/adapters/notifier"
-	"github.com/dappnode/validator-tracker/internal/adapters/web3signer"
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/services"
 	"github.com/dappnode/validator-tracker/internal/config"
 	"github.com/dappnode/validator-tracker/internal/logger"
 )
-
-//TODO: Implement dev mode with commands example
 
 func main() {
 	// Load config
@@ -35,7 +33,7 @@ func main() {
 		cfg.Network,
 		cfg.SignerDnpName,
 	)
-	web3Signer := web3signer.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
+	brain := brain.NewBrainAdapter(cfg.BrainUrl)
 	// TODO: do not err
 	beacon, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
 	if err != nil {
@@ -50,7 +48,7 @@ func main() {
 	// Start the duties checker service in a goroutine
 	dutiesChecker := &services.DutiesChecker{
 		Beacon:          beacon,
-		Signer:          web3Signer,
+		Brain:           brain,
 		Notifier:        notifier,
 		Dappmanager:     dappmanager,
 		PollInterval:    1 * time.Minute,
