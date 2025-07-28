@@ -1,5 +1,4 @@
-// internal/adapters/web3signer_adapter.go
-package adapters
+package web3signer
 
 import (
 	"encoding/json"

@@ -1,45 +1,46 @@
-// internal/adapters/beaconchain_adapter.go
-package adapters
+package beacon
 
 import (
 	"context"
 	"encoding/hex"
 	"errors"
 	"fmt"
-	nethttp "net/http"
+	"net/http"
 	"time"
 
-	apiv1 "github.com/attestantio/go-eth2-client/api/v1"
+	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/ports"
 	"github.com/rs/zerolog"
 
 	"github.com/attestantio/go-eth2-client/api"
-	"github.com/attestantio/go-eth2-client/http"
+	_http "github.com/attestantio/go-eth2-client/http"
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
+// TODO: implement slash method
+
 type beaconAttestantClient struct {
-	client *http.Service
+	client *_http.Service
 }
 
-func NewBeaconAttestantAdapter(endpoint string) (ports.BeaconChainAdapter, error) {
+func NewBeaconAdapter(endpoint string) (ports.BeaconChainAdapter, error) {
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
-	customHttpClient := &nethttp.Client{
+	customHttpClient := &http.Client{
 		Timeout: 2000 * time.Second,
 	}
 
-	client, err := http.New(context.Background(),
-		http.WithAddress(endpoint),
-		http.WithHTTPClient(customHttpClient),
-		http.WithTimeout(20*time.Second), // important as attestant API overrides my timeout TODO: investigate how
+	client, err := _http.New(context.Background(),
+		_http.WithAddress(endpoint),
+		_http.WithHTTPClient(customHttpClient),
+		_http.WithTimeout(20*time.Second), // important as attestant API overrides my timeout TODO: investigate how
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &beaconAttestantClient{client: client.(*http.Service)}, nil
+	return &beaconAttestantClient{client: client.(*_http.Service)}, nil
 }
 
 // GetFinalizedEpoch retrieves the latest finalized epoch from the beacon chain.
@@ -178,10 +179,10 @@ func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context
 	validators, err := b.client.Validators(ctx, &api.ValidatorsOpts{
 		State:   "head",
 		PubKeys: beaconPubkeys,
-		ValidatorStates: []apiv1.ValidatorState{
-			apiv1.ValidatorStateActiveOngoing,
-			apiv1.ValidatorStateActiveExiting,
-			apiv1.ValidatorStateActiveSlashed,
+		ValidatorStates: []v1.ValidatorState{
+			v1.ValidatorStateActiveOngoing,
+			v1.ValidatorStateActiveExiting,
+			v1.ValidatorStateActiveSlashed,
 		},
 	})
 	if err != nil {
@@ -256,4 +257,39 @@ func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch
 		livenessMap[domain.ValidatorIndex(v.Index)] = v.IsLive
 	}
 	return livenessMap, nil
+}
+
+// enum for consensus client
+type ConsensusClient string
+
+const (
+	Unknown    ConsensusClient = "unknown"
+	Nimbus     ConsensusClient = "nimbus"
+	Lighthouse ConsensusClient = "lighthouse"
+	Teku       ConsensusClient = "teku"
+	Prysm      ConsensusClient = "prysm"
+	Lodestar   ConsensusClient = "lodestar"
+)
+
+// GetConsensusClient see https://ethereum.github.io/beacon-APIs/#/Node/getNodeVersion. Does not throw an error if the client is not available
+func (b *beaconAttestantClient) GetConsensusClient(ctx context.Context) ConsensusClient {
+	resp, err := b.client.NodeClient(ctx)
+	if err != nil || resp == nil {
+		return Unknown
+	}
+
+	switch resp.Data {
+	case "nimbus":
+		return Nimbus
+	case "lighthouse":
+		return Lighthouse
+	case "teku":
+		return Teku
+	case "prysm":
+		return Prysm
+	case "lodestar":
+		return Lodestar
+	default:
+		return Unknown
+	}
 }
