@@ -28,7 +28,7 @@ func LoadConfig() Config {
 	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.dncore.dappnode:3500", network)
 	web3SignerEndpoint := fmt.Sprintf("http://web3signer.web3signer-%s.dappnode:9000", network)
 	dappmanagerEndpoint := "http://dappmanager.dappnode"
-	notifierEndpoint := "http://notifier.dappnode:8080"
+	notifierEndpoint := "http://notifier.dappnode:8080f"
 
 	// Allow override via environment variables
 	if envBeacon := os.Getenv("BEACON_ENDPOINT"); envBeacon != "" {

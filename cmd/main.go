@@ -22,7 +22,7 @@ import (
 func main() {
 	// Load config
 	cfg := config.LoadConfig()
-	logger.Info("Loaded config: network=%s, beaconEndpoint=%s, web3SignerEndpoint=%s",
+	logger.Info("Loaded e config: network=%s, beaconEndpoint=%s, web3SignerEndpoint=%s",
 		cfg.Network, cfg.BeaconEndpoint, cfg.Web3SignerEndpoint)
 
 	// Initialize adapters

@@ -1,0 +1,28 @@
+# Air configuration file for Go live reload
+
+root = "."
+tmp_dir = "tmp"
+
+[build]
+cmd = "go build -o ./tmp/main ./cmd/main.go"
+bin = "./tmp/main"
+include_ext = ["go"]
+exclude_dir = ["tmp", "vendor"]
+exclude_file = []
+follow_symlink = true
+delay = 1000 # ms
+log = "build.log"
+send_interrupt = true 
+kill_delay = 500
+
+[log]
+time = true
+
+[color]
+main = "yellow"
+watcher = "cyan"
+build = "green"
+runner = "magenta"
+
+[misc]
+clean_on_exit = true
