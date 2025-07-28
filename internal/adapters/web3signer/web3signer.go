@@ -3,6 +3,7 @@ package web3signer
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -14,6 +15,7 @@ type Web3SignerAdapter struct {
 	Endpoint string
 }
 
+// KeystoreResponse models the expected JSON from /eth/v1/keystores
 type KeystoreResponse struct {
 	Data []struct {
 		ValidatingPubkey string `json:"validating_pubkey"`
@@ -25,19 +27,31 @@ func NewWeb3SignerAdapter(endpoint string) ports.Web3SignerAdapter {
 }
 
 func (w *Web3SignerAdapter) GetValidatorPubkeys() ([]string, error) {
+	url := fmt.Sprintf("%s/eth/v1/keystores", w.Endpoint)
 	client := &http.Client{Timeout: 30 * time.Second}
-	resp, err := client.Get(fmt.Sprintf("%s/eth/v1/keystores", w.Endpoint))
+
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch keystores: %w", err)
+		return nil, fmt.Errorf("creating Web3Signer request: %w", err)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("error sending Web3Signer request: %w", err)
 	}
 	defer resp.Body.Close()
 
-	var keystoreResp KeystoreResponse
-	if err := json.NewDecoder(resp.Body).Decode(&keystoreResp); err != nil {
-		return nil, fmt.Errorf("failed to parse keystores: %w", err)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("unexpected Web3Signer status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var pubkeys []string
+	var keystoreResp KeystoreResponse
+	if err := json.NewDecoder(resp.Body).Decode(&keystoreResp); err != nil {
+		return nil, fmt.Errorf("error decoding Web3Signer response: %w", err)
+	}
+
+	pubkeys := make([]string, 0, len(keystoreResp.Data))
 	for _, item := range keystoreResp.Data {
 		pubkeys = append(pubkeys, item.ValidatingPubkey)
 	}

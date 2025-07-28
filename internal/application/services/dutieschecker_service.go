@@ -162,8 +162,10 @@ func (a *DutiesChecker) checkLiveness(
 		if !ok || !isLive {
 			offline = append(offline, idx)
 			allLive = false
+			logger.Warn("❌ Validator %d was not seen in epoch %d", idx, epochToTrack)
 		} else {
 			online = append(online, idx)
+			logger.Info("✅ Validator %d seen in epoch %d", idx, epochToTrack)
 		}
 	}
 	return offline, online, allLive, nil
