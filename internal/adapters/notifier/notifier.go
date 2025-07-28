@@ -110,6 +110,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	var title, body string
 	var priority Priority
 	var status Status
+	correlationId := string(domain.ValidatorLiveness)
 	if live {
 		title = fmt.Sprintf("Validator(s) Online: %s", indexesToString(validators))
 		body = fmt.Sprintf("Validator(s) %s are back online on %s. View: %s", indexesToString(validators), n.Network, n.buildBeaconchaURL(validators))
@@ -122,13 +123,14 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 		status = Triggered
 	}
 	payload := NotificationPayload{
-		Title:        title,
-		Body:         body,
-		Category:     &n.Category,
-		Priority:     &priority,
-		DnpName:      &n.SignerDnpName,
-		Status:       &status,
-		CallToAction: nil,
+		Title:         title,
+		Body:          body,
+		Category:      &n.Category,
+		Priority:      &priority,
+		DnpName:       &n.SignerDnpName,
+		Status:        &status,
+		CorrelationId: &correlationId,
+		CallToAction:  nil,
 	}
 	return n.sendNotification(payload)
 }
@@ -141,15 +143,17 @@ func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) 
 	priority := Critical
 	status := Triggered
 	isBanner := true
+	correlationId := string(domain.ValidatorSlashed)
 	payload := NotificationPayload{
-		Title:        title,
-		Body:         body,
-		Category:     &n.Category,
-		Priority:     &priority,
-		IsBanner:     &isBanner,
-		DnpName:      &n.SignerDnpName,
-		Status:       &status,
-		CallToAction: nil,
+		Title:         title,
+		Body:          body,
+		Category:      &n.Category,
+		Priority:      &priority,
+		IsBanner:      &isBanner,
+		DnpName:       &n.SignerDnpName,
+		Status:        &status,
+		CorrelationId: &correlationId,
+		CallToAction:  nil,
 	}
 	return n.sendNotification(payload)
 }
@@ -160,6 +164,7 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 	var priority Priority
 	var status Status = Triggered
 	isBanner := true
+	correlationId := string(domain.BlockProposal)
 	if proposed {
 		title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators))
 		body = fmt.Sprintf("Validator(s) %s proposed a block at epoch %d on %s. View: %s", indexesToString(validators), epoch, n.Network, n.buildBeaconchaURL(validators))
@@ -170,14 +175,15 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 		priority = High
 	}
 	payload := NotificationPayload{
-		Title:        title,
-		Body:         body,
-		Category:     &n.Category,
-		Priority:     &priority,
-		IsBanner:     &isBanner,
-		DnpName:      &n.SignerDnpName,
-		Status:       &status,
-		CallToAction: nil,
+		Title:         title,
+		Body:          body,
+		Category:      &n.Category,
+		Priority:      &priority,
+		IsBanner:      &isBanner,
+		DnpName:       &n.SignerDnpName,
+		Status:        &status,
+		CorrelationId: &correlationId,
+		CallToAction:  nil,
 	}
 	return n.sendNotification(payload)
 }
