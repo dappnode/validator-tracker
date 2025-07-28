@@ -16,13 +16,14 @@ import (
 type Notifier struct {
 	BaseURL       string
 	BeaconchaUrl  string
+	BrainUrl      string
 	Network       string
 	Category      Category
 	SignerDnpName string
 	HTTPClient    *http.Client
 }
 
-func NewNotifier(baseURL, beaconchaUrl, network, signerDnpName string) *Notifier {
+func NewNotifier(baseURL, beaconchaUrl, brainUrl, network, signerDnpName string) *Notifier {
 	category := Category(strings.ToLower(network))
 	if network == "mainnet" {
 		category = Ethereum
@@ -30,6 +31,7 @@ func NewNotifier(baseURL, beaconchaUrl, network, signerDnpName string) *Notifier
 	return &Notifier{
 		BaseURL:       baseURL,
 		BeaconchaUrl:  beaconchaUrl,
+		BrainUrl:      brainUrl,
 		Network:       network,
 		Category:      category,
 		SignerDnpName: signerDnpName,
@@ -148,19 +150,16 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 // SendValidatorsSlashedNot sends a notification when one or more validators are slashed.
 func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) error {
 	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators))
-	beaconchaUrl := n.buildBeaconchaURL(validators)
 	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators), n.Network)
 	priority := Critical
 	status := Triggered
 	isBanner := true
 	correlationId := string(domain.ValidatorSlashed)
-	var callToAction *CallToAction
-	if beaconchaUrl != "" {
-		callToAction = &CallToAction{
-			Title: "View on Beaconcha",
-			URL:   beaconchaUrl,
-		}
+	callToAction := &CallToAction{
+		Title: "Remove validators",
+		URL:   n.BrainUrl,
 	}
+
 	payload := NotificationPayload{
 		Title:         title,
 		Body:          body,
