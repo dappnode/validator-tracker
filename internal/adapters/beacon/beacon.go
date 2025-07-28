@@ -18,6 +18,8 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
+// TODO: implement slash method
+
 type beaconAttestantClient struct {
 	client *_http.Service
 }
