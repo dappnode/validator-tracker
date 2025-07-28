@@ -150,19 +150,16 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 // SendValidatorsSlashedNot sends a notification when one or more validators are slashed.
 func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) error {
 	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators))
-	beaconchaUrl := n.buildBeaconchaURL(validators)
 	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators), n.Network)
 	priority := Critical
 	status := Triggered
 	isBanner := true
 	correlationId := string(domain.ValidatorSlashed)
-	var callToAction *CallToAction
-	if beaconchaUrl != "" {
-		callToAction = &CallToAction{
-			Title: "View on Beaconcha",
-			URL:   beaconchaUrl,
-		}
+	callToAction := &CallToAction{
+		Title: "Remove validators",
+		URL:   n.BrainUrl,
 	}
+
 	payload := NotificationPayload{
 		Title:         title,
 		Body:          body,
