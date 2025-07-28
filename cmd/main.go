@@ -24,6 +24,7 @@ func main() {
 	logger.Info("Loaded config: network=%s, beaconEndpoint=%s, web3SignerEndpoint=%s",
 		cfg.Network, cfg.BeaconEndpoint, cfg.Web3SignerEndpoint)
 
+	// Initialize adapters
 	dappmanager := dappmanager.NewDappManagerAdapter(cfg.DappmanagerUrl, cfg.SignerDnpName)
 	notifier := notifier.NewNotifier(
 		cfg.NotifierUrl,
@@ -31,29 +32,11 @@ func main() {
 		cfg.Network,
 		cfg.SignerDnpName,
 	)
-
-	// Fetch validator pubkeys
 	web3Signer := web3signer.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
-	// TODO: move to a service
-	pubkeys, err := web3Signer.GetValidatorPubkeys()
-	if err != nil {
-		logger.Fatal("Failed to get validator pubkeys from web3signer: %v", err)
-	}
-	logger.Info("Fetched %d pubkeys from web3signer", len(pubkeys))
-
-	// Initialize beacon chain adapter
 	beacon, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
 	if err != nil {
 		logger.Fatal("Failed to initialize beacon adapter: %v", err)
 	}
-
-	// Get validator indices from pubkeys
-	// TODO: move to a service
-	indices, err := beacon.GetValidatorIndicesByPubkeys(context.Background(), pubkeys)
-	if err != nil {
-		logger.Fatal("Failed to get validator indices: %v", err)
-	}
-	logger.Info("Found %d validator indices active", len(indices))
 
 	// Prepare context and WaitGroup for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
@@ -61,7 +44,6 @@ func main() {
 	var wg sync.WaitGroup
 
 	// Start the duties checker service in a goroutine
-	logger.Info("Starting duties checker for %d validators", len(indices))
 	dutiesChecker := &services.DutiesChecker{
 		Beacon:        beacon,
 		Signer:        web3Signer,
