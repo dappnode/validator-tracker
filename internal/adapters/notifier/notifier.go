@@ -16,13 +16,14 @@ import (
 type Notifier struct {
 	BaseURL       string
 	BeaconchaUrl  string
+	BrainUrl      string
 	Network       string
 	Category      Category
 	SignerDnpName string
 	HTTPClient    *http.Client
 }
 
-func NewNotifier(baseURL, beaconchaUrl, network, signerDnpName string) *Notifier {
+func NewNotifier(baseURL, beaconchaUrl, brainUrl, network, signerDnpName string) *Notifier {
 	category := Category(strings.ToLower(network))
 	if network == "mainnet" {
 		category = Ethereum
@@ -30,6 +31,7 @@ func NewNotifier(baseURL, beaconchaUrl, network, signerDnpName string) *Notifier
 	return &Notifier{
 		BaseURL:       baseURL,
 		BeaconchaUrl:  beaconchaUrl,
+		BrainUrl:      brainUrl,
 		Network:       network,
 		Category:      category,
 		SignerDnpName: signerDnpName,
