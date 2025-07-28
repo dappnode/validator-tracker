@@ -34,6 +34,7 @@ func main() {
 
 	// Fetch validator pubkeys
 	web3Signer := web3signer.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
+	// TODO: move to a service
 	pubkeys, err := web3Signer.GetValidatorPubkeys()
 	if err != nil {
 		logger.Fatal("Failed to get validator pubkeys from web3signer: %v", err)
@@ -47,6 +48,7 @@ func main() {
 	}
 
 	// Get validator indices from pubkeys
+	// TODO: move to a service
 	indices, err := beacon.GetValidatorIndicesByPubkeys(context.Background(), pubkeys)
 	if err != nil {
 		logger.Fatal("Failed to get validator indices: %v", err)
