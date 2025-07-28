@@ -36,6 +36,7 @@ func main() {
 		cfg.SignerDnpName,
 	)
 	web3Signer := web3signer.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
+	// TODO: do not err
 	beacon, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
 	if err != nil {
 		logger.Fatal("Failed to initialize beacon adapter: %v", err)
