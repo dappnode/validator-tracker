@@ -88,6 +88,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 
 	// Debug print: show offline, online, and allLive status
 	logger.Debug("Liveness check: offline=%v, online=%v, allLive=%v", offline, online, allLive)
+	logger.Debug("Previously all live: %v, previously offline: %v", a.previouslyAllLive, a.previouslyOffline)
 
 	// Check for the first condition: 1 or more validators offline when all were previously live
 	if len(offline) > 0 && a.previouslyAllLive {
