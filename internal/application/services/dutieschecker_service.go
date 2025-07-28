@@ -19,6 +19,8 @@ type DutiesChecker struct {
 	lastJustifiedEpoch domain.Epoch
 	lastLivenessState  *bool
 	lastRunHadError    bool
+
+	SlashedNotified map[domain.ValidatorIndex]bool
 }
 
 func (a *DutiesChecker) Run(ctx context.Context) {
@@ -112,6 +114,27 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	if len(missed) > 0 && notificationsEnabled[domain.BlockProposal] {
 		if err := a.Notifier.SendBlockProposalNot(missed, int(justifiedEpoch), false); err != nil {
 			logger.Warn("Error sending block proposal notification: %v", err)
+		}
+	}
+
+	slashed, err := a.Beacon.GetSlashedValidators(ctx, indices)
+	if err != nil {
+		logger.Error("Error fetching slashed validators: %v", err)
+		return err
+	}
+
+	// Notify about slashed validators only if they haven't been notified before
+	var toNotify []domain.ValidatorIndex
+	for _, index := range slashed {
+		if !a.SlashedNotified[index] {
+			toNotify = append(toNotify, index)
+			a.SlashedNotified[index] = true
+		}
+	}
+
+	if len(toNotify) > 0 && notificationsEnabled[domain.ValidatorSlashed] {
+		if err := a.Notifier.SendValidatorsSlashedNot(toNotify); err != nil {
+			logger.Warn("Error sending validator slashed notification: %v", err)
 		}
 	}
 

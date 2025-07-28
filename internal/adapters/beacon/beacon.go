@@ -178,7 +178,7 @@ func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context
 	// Only get validators in active states
 	// TODO: why do I need apiv1 for this struct? is there something newer?
 	validators, err := b.client.Validators(ctx, &api.ValidatorsOpts{
-		State:   "head",
+		State:   "justified",
 		PubKeys: beaconPubkeys,
 		ValidatorStates: []v1.ValidatorState{
 			v1.ValidatorStateActiveOngoing,
@@ -258,6 +258,28 @@ func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch
 		livenessMap[domain.ValidatorIndex(v.Index)] = v.IsLive
 	}
 	return livenessMap, nil
+}
+
+// GetSlashedValidators retrieves the indices of slashed validators. In the justified state.
+func (b *beaconAttestantClient) GetSlashedValidators(ctx context.Context, indices []domain.ValidatorIndex) ([]domain.ValidatorIndex, error) {
+	slashed, err := b.client.Validators(ctx, &api.ValidatorsOpts{
+		State: "justified",
+		// Only get validators in slashed states
+		ValidatorStates: []v1.ValidatorState{
+			v1.ValidatorStateActiveSlashed,
+			v1.ValidatorStateExitedSlashed,
+		},
+		Indices: make([]phase0.ValidatorIndex, len(indices)),
+	})
+
+	if err != nil {
+		return nil, err
+	}
+	slashedIndices := make([]domain.ValidatorIndex, 0, len(slashed.Data))
+	for _, v := range slashed.Data {
+		slashedIndices = append(slashedIndices, domain.ValidatorIndex(v.Index))
+	}
+	return slashedIndices, nil
 }
 
 // enum for consensus client
