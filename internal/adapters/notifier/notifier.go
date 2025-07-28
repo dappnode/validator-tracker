@@ -108,6 +108,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	var title, body string
 	var priority Priority
 	var status Status
+	var isBanner bool
 	correlationId := string(domain.ValidatorLiveness)
 	var callToAction *CallToAction
 	beaconchaUrl := n.buildBeaconchaURL(validators)
@@ -122,11 +123,13 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 		body = fmt.Sprintf("✅ Validator(s) %s are back online on %s.", indexesToString(validators), n.Network)
 		priority = Info
 		status = Resolved
+		isBanner = false
 	} else {
 		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators))
 		body = fmt.Sprintf("❌ Validator(s) %s are offline on %s.", indexesToString(validators), n.Network)
 		priority = High
 		status = Triggered
+		isBanner = true
 	}
 	payload := NotificationPayload{
 		Title:         title,
@@ -136,6 +139,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 		DnpName:       &n.SignerDnpName,
 		Status:        &status,
 		CorrelationId: &correlationId,
+		IsBanner:      &isBanner,
 		CallToAction:  callToAction,
 	}
 	return n.sendNotification(payload)
