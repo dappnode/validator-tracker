@@ -77,11 +77,15 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 		return nil
 	}
 
-	offline, _, allLive, err := a.checkLiveness(ctx, justifiedEpoch, indices)
+	offline, online, allLive, err := a.checkLiveness(ctx, justifiedEpoch, indices)
 	if err != nil {
 		logger.Error("Error checking liveness for validators: %v", err)
 		return err
 	}
+
+	// Debug print: show offline, online, and allLive status
+	logger.Debug("Liveness check: offline=%v, online=%v, allLive=%v", offline, online, allLive)
+
 	if len(offline) > 0 && (a.lastLivenessState == nil || *a.lastLivenessState) {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
