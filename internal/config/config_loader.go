@@ -27,7 +27,7 @@ func LoadConfig() Config {
 
 	// Build the dynamic endpoints
 	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.dncore.dappnode:3500", network)
-	web3SignerEndpoint := fmt.Sprintf("http://signer.%s.dncore.dappnode:9000", network)
+	web3SignerEndpoint := fmt.Sprintf("http://web3signer.%s.dncore.dappnode:9000", network)
 	dappmanagerEndpoint := "http://dappmanager.dappnode"
 	notifierEndpoint := "http://notifier.dappnode:8080"
 	brainEndpoint := fmt.Sprintf("http://brain.web3signer-%s.dappnode:5000", network)
