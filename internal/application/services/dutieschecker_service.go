@@ -17,10 +17,13 @@ type DutiesChecker struct {
 
 	PollInterval       time.Duration
 	lastJustifiedEpoch domain.Epoch
-	lastLivenessState  *bool
 	lastRunHadError    bool
 
 	SlashedNotified map[domain.ValidatorIndex]bool
+
+	// Tracking previous states for notifications
+	previouslyAllLive bool
+	previouslyOffline bool
 }
 
 func (a *DutiesChecker) Run(ctx context.Context) {
@@ -86,25 +89,28 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	// Debug print: show offline, online, and allLive status
 	logger.Debug("Liveness check: offline=%v, online=%v, allLive=%v", offline, online, allLive)
 
-	if len(offline) > 0 && (a.lastLivenessState == nil || *a.lastLivenessState) {
+	// Check for the first condition: 1 or more validators offline when all were previously live
+	if len(offline) > 0 && a.previouslyAllLive {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
-		val := false
-		a.lastLivenessState = &val
+		a.previouslyOffline = true
 	}
-	if allLive && (a.lastLivenessState == nil || !*a.lastLivenessState) {
+
+	// Check for the second condition: all validators online after 1 or more were offline
+	if allLive && a.previouslyOffline {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			if err := a.Notifier.SendValidatorLivenessNot(indices, true); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
-		val := true
-		a.lastLivenessState = &val
+		a.previouslyAllLive = true
+		a.previouslyOffline = false
 	}
 
+	// Check block proposals (successful or missed)
 	proposed, missed, err := a.checkProposals(ctx, justifiedEpoch, indices)
 	if err != nil {
 		logger.Error("Error checking block proposals: %v", err)
@@ -121,6 +127,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 		}
 	}
 
+	// Check for slashed validators
 	slashed, err := a.Beacon.GetSlashedValidators(ctx, indices)
 	if err != nil {
 		logger.Error("Error fetching slashed validators: %v", err)
