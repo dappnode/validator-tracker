@@ -18,6 +18,8 @@ import (
 	"github.com/dappnode/validator-tracker/internal/logger"
 )
 
+//TODO: Implement dev mode with commands example
+
 func main() {
 	// Load config
 	cfg := config.LoadConfig()
