@@ -19,7 +19,6 @@ import (
 )
 
 // TODO: should the adapter avoid returning err when initializing?
-// TODO: implement slash method
 
 type beaconAttestantClient struct {
 	client *_http.Service
