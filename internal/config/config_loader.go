@@ -16,6 +16,7 @@ type Config struct {
 	BeaconchaUrl       string
 	DappmanagerUrl     string
 	NotifierUrl        string
+	BrainUrl           string
 }
 
 func LoadConfig() Config {
@@ -26,9 +27,10 @@ func LoadConfig() Config {
 
 	// Build the dynamic endpoints
 	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.dncore.dappnode:3500", network)
-	web3SignerEndpoint := fmt.Sprintf("http://web3signer.web3signer-%s.dappnode:9000", network)
+	web3SignerEndpoint := fmt.Sprintf("http://signer.%s.dncore.dappnode:9000", network)
 	dappmanagerEndpoint := "http://dappmanager.dappnode"
-	notifierEndpoint := "http://notifier.dappnode:8080f"
+	notifierEndpoint := "http://notifier.dappnode:8080"
+	brainEndpoint := fmt.Sprintf("http://brain.web3signer-%s.dappnode:5000", network)
 
 	// Allow override via environment variables
 	if envBeacon := os.Getenv("BEACON_ENDPOINT"); envBeacon != "" {
@@ -43,6 +45,9 @@ func LoadConfig() Config {
 	if envNotifier := os.Getenv("NOTIFIER_URL"); envNotifier != "" {
 		notifierEndpoint = envNotifier
 	}
+	if envBrain := os.Getenv("BRAIN_URL"); envBrain != "" {
+		brainEndpoint = envBrain
+	}
 
 	// Normalize network name for logs
 	network = strings.ToLower(network)
@@ -53,6 +58,7 @@ func LoadConfig() Config {
 	var dnpName string
 	if network == "mainnet" {
 		dnpName = "web3signer.dnp.dappnode.eth"
+		brainEndpoint = "http://brain.web3signer.dnp.dappnode.eth:8080"
 	} else {
 		dnpName = fmt.Sprintf("web3signer-%s.dnp.dappnode.eth", network)
 	}
@@ -81,5 +87,6 @@ func LoadConfig() Config {
 		BeaconchaUrl:       beaconchaUrl,
 		DappmanagerUrl:     dappmanagerEndpoint,
 		NotifierUrl:        notifierEndpoint,
+		BrainUrl:           brainEndpoint,
 	}
 }

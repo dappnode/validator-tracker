@@ -31,6 +31,7 @@ func main() {
 	notifier := notifier.NewNotifier(
 		cfg.NotifierUrl,
 		cfg.BeaconchaUrl,
+		cfg.BrainUrl,
 		cfg.Network,
 		cfg.SignerDnpName,
 	)
