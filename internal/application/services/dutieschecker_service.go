@@ -61,7 +61,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 
 	pubkeys, err := a.Brain.GetValidatorPubkeys()
 	if err != nil {
-		logger.Error("Error fetching pubkeys from web3signer: %v", err)
+		logger.Error("Error fetching pubkeys from brain: %v", err)
 		return err
 	}
 

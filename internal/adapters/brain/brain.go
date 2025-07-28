@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/dappnode/validator-tracker/internal/application/ports"
@@ -22,9 +23,21 @@ type BrainAdapter struct {
 type brainValidatorsResponse map[string][]string
 
 func NewBrainAdapter(baseURL string) ports.BrainAdapter {
+	// Always append :5000 if not present
+	u, err := url.Parse(baseURL)
+	if err == nil && u.Port() == "" {
+		if u.Scheme == "" {
+			baseURL = fmt.Sprintf("%s:5000", baseURL)
+		} else {
+			u.Host = fmt.Sprintf("%s:5000", u.Host)
+			baseURL = u.String()
+		}
+	} else if err != nil && !strings.HasSuffix(baseURL, ":5000") {
+		baseURL = fmt.Sprintf("%s:5000", baseURL)
+	}
 	return &BrainAdapter{
 		BaseURL: baseURL,
-		client:  &http.Client{Timeout: 30 * time.Second},
+		client:  &http.Client{Timeout: 3 * time.Second},
 	}
 }
 
