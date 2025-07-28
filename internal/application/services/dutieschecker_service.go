@@ -19,8 +19,9 @@ type DutiesChecker struct {
 	lastJustifiedEpoch domain.Epoch
 	CheckedEpochs      map[domain.ValidatorIndex]domain.Epoch // latest epoch checked for each validator index
 
-	lastLivenessState bool // true if last notification was online, false if offline, unset if first run
-	livenessStateSet  bool // to track if lastLivenessState is initialized
+	// lastLivenessState tracks the last liveness notification sent: nil = no notification sent yet (first run),
+	// true = last notification was online, false = last notification was offline
+	lastLivenessState *bool
 }
 
 // If at interval, ticker ticks but check has not ended, we wont start a new check, we will just wait for the next tick.
@@ -80,23 +81,23 @@ func (a *DutiesChecker) checkLatestJustifiedEpoch(ctx context.Context, notificat
 		logger.Error("Error checking liveness for validators: %v", err)
 		return
 	}
-	if len(offline) > 0 && (!a.livenessStateSet || a.lastLivenessState) {
+	if len(offline) > 0 && (a.lastLivenessState == nil || *a.lastLivenessState) {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
-		a.lastLivenessState = false
-		a.livenessStateSet = true
+		val := false
+		a.lastLivenessState = &val
 	}
-	if allLive && (!a.livenessStateSet || !a.lastLivenessState) {
+	if allLive && (a.lastLivenessState == nil || !*a.lastLivenessState) {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			if err := a.Notifier.SendValidatorLivenessNot(validatorIndices, true); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
-		a.lastLivenessState = true
-		a.livenessStateSet = true
+		val := true
+		a.lastLivenessState = &val
 	}
 
 	// Block proposal notification logic
