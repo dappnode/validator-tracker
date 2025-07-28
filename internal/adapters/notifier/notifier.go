@@ -101,32 +101,22 @@ func (n *Notifier) sendNotification(payload NotificationPayload) error {
 	return nil
 }
 
-// SendValidatorsOffNot sends a notification when one or more validators go offline.
-func (n *Notifier) SendValidatorsOffNot(validators []domain.ValidatorIndex) error {
-	title := fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators))
-	url := n.buildBeaconchaURL(validators)
-	body := fmt.Sprintf("Validator(s) %s are offline on %s. View: %s", indexesToString(validators), n.Network, url)
-	priority := High
-	status := Triggered
-	payload := NotificationPayload{
-		Title:        title,
-		Body:         body,
-		Category:     &n.Category,
-		Priority:     &priority,
-		DnpName:      &n.SignerDnpName,
-		Status:       &status,
-		CallToAction: nil,
+// SendValidatorLivenessNot sends a notification when one or more validators go offline or online.
+func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, live bool) error {
+	var title, body string
+	var priority Priority
+	var status Status
+	if live {
+		title = fmt.Sprintf("Validator(s) Online: %s", indexesToString(validators))
+		body = fmt.Sprintf("Validator(s) %s are back online on %s. View: %s", indexesToString(validators), n.Network, n.buildBeaconchaURL(validators))
+		priority = Info
+		status = Resolved
+	} else {
+		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators))
+		body = fmt.Sprintf("Validator(s) %s are offline on %s. View: %s", indexesToString(validators), n.Network, n.buildBeaconchaURL(validators))
+		priority = High
+		status = Triggered
 	}
-	return n.sendNotification(payload)
-}
-
-// SendValidatorsOnNot sends a notification when one or more validators come back online.
-func (n *Notifier) SendValidatorsOnNot(validators []domain.ValidatorIndex) error {
-	title := fmt.Sprintf("Validator(s) Online: %s", indexesToString(validators))
-	url := n.buildBeaconchaURL(validators)
-	body := fmt.Sprintf("Validator(s) %s are back online on %s. View: %s", indexesToString(validators), n.Network, url)
-	priority := Info
-	status := Resolved
 	payload := NotificationPayload{
 		Title:        title,
 		Body:         body,
@@ -160,14 +150,21 @@ func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) 
 	return n.sendNotification(payload)
 }
 
-// SendBlockProposedNot sends a notification when a block is proposed by one or more validators.
-func (n *Notifier) SendBlockProposedNot(validators []domain.ValidatorIndex, epoch int) error {
-	title := fmt.Sprintf("Block Proposed: %s", indexesToString(validators))
-	url := n.buildBeaconchaURL(validators)
-	body := fmt.Sprintf("Validator(s) %s proposed a block at epoch %d on %s. View: %s", indexesToString(validators), epoch, n.Network, url)
-	priority := Info
-	status := Triggered
+// SendBlockProposalNot sends a notification when a block is proposed or missed by one or more validators.
+func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoch int, proposed bool) error {
+	var title, body string
+	var priority Priority
+	var status Status = Triggered
 	isBanner := true
+	if proposed {
+		title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators))
+		body = fmt.Sprintf("Validator(s) %s proposed a block at epoch %d on %s. View: %s", indexesToString(validators), epoch, n.Network, n.buildBeaconchaURL(validators))
+		priority = Info
+	} else {
+		title = fmt.Sprintf("Block Missed: %s", indexesToString(validators))
+		body = fmt.Sprintf("Validator(s) %s missed a block proposal at epoch %d on %s. View: %s", indexesToString(validators), epoch, n.Network, n.buildBeaconchaURL(validators))
+		priority = High
+	}
 	payload := NotificationPayload{
 		Title:        title,
 		Body:         body,

@@ -12,8 +12,10 @@ type Config struct {
 	BeaconEndpoint     string
 	Web3SignerEndpoint string
 	Network            string
-	DnpName            string
+	SignerDnpName      string
 	BeaconchaUrl       string
+	DappmanagerUrl     string
+	NotifierUrl        string
 }
 
 func LoadConfig() Config {
@@ -25,6 +27,8 @@ func LoadConfig() Config {
 	// Build the dynamic endpoints
 	beaconEndpoint := fmt.Sprintf("http://beacon-chain.%s.dncore.dappnode:3500", network)
 	web3SignerEndpoint := fmt.Sprintf("http://web3signer.web3signer-%s.dappnode:9000", network)
+	dappmanagerEndpoint := "http://dappmanager.dappnode"
+	notifierEndpoint := "http://notifier.dappnode:8080"
 
 	// Allow override via environment variables
 	if envBeacon := os.Getenv("BEACON_ENDPOINT"); envBeacon != "" {
@@ -32,6 +36,12 @@ func LoadConfig() Config {
 	}
 	if envWeb3Signer := os.Getenv("WEB3SIGNER_ENDPOINT"); envWeb3Signer != "" {
 		web3SignerEndpoint = envWeb3Signer
+	}
+	if envDappmanager := os.Getenv("DAPPMANAGER_ENDPOINT"); envDappmanager != "" {
+		dappmanagerEndpoint = envDappmanager
+	}
+	if envNotifier := os.Getenv("NOTIFIER_URL"); envNotifier != "" {
+		notifierEndpoint = envNotifier
 	}
 
 	// Normalize network name for logs
@@ -67,7 +77,9 @@ func LoadConfig() Config {
 		BeaconEndpoint:     beaconEndpoint,
 		Web3SignerEndpoint: web3SignerEndpoint,
 		Network:            network,
-		DnpName:            dnpName,
+		SignerDnpName:      dnpName,
 		BeaconchaUrl:       beaconchaUrl,
+		DappmanagerUrl:     dappmanagerEndpoint,
+		NotifierUrl:        notifierEndpoint,
 	}
 }

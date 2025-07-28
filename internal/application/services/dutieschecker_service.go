@@ -10,12 +10,17 @@ import (
 )
 
 type DutiesChecker struct {
-	BeaconAdapter     ports.BeaconChainAdapter
-	Web3SignerAdapter ports.Web3SignerAdapter
-	PollInterval      time.Duration
+	Beacon      ports.BeaconChainAdapter
+	Signer      ports.Web3SignerAdapter
+	Notifier    ports.NotifierPort
+	Dappmanager ports.DappManagerPort
 
+	PollInterval       time.Duration
 	lastJustifiedEpoch domain.Epoch
 	CheckedEpochs      map[domain.ValidatorIndex]domain.Epoch // latest epoch checked for each validator index
+
+	lastLivenessState bool // true if last notification was online, false if offline, unset if first run
+	livenessStateSet  bool // to track if lastLivenessState is initialized
 }
 
 // If at interval, ticker ticks but check has not ended, we wont start a new check, we will just wait for the next tick.
@@ -26,15 +31,19 @@ func (a *DutiesChecker) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			a.chechLatestJustifiedEpoch(ctx)
+			notificationsEnabled, err := a.Dappmanager.GetNotificationsEnabled(ctx)
+			if err != nil {
+				logger.Warn("Error fetching notifications enabled, notification will not be sent: %v", err)
+			}
+			a.checkLatestJustifiedEpoch(ctx, notificationsEnabled)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (a *DutiesChecker) chechLatestJustifiedEpoch(ctx context.Context) {
-	justifiedEpoch, err := a.BeaconAdapter.GetJustifiedEpoch(ctx)
+func (a *DutiesChecker) checkLatestJustifiedEpoch(ctx context.Context, notificationsEnabled domain.ValidatorNotificationsEnabled) {
+	justifiedEpoch, err := a.Beacon.GetJustifiedEpoch(ctx)
 	if err != nil {
 		logger.Error("Error fetching justified epoch: %v", err)
 		return
@@ -46,13 +55,13 @@ func (a *DutiesChecker) chechLatestJustifiedEpoch(ctx context.Context) {
 	a.lastJustifiedEpoch = justifiedEpoch
 	logger.Info("New justified epoch %d detected.", justifiedEpoch)
 
-	pubkeys, err := a.Web3SignerAdapter.GetValidatorPubkeys()
+	pubkeys, err := a.Signer.GetValidatorPubkeys()
 	if err != nil {
 		logger.Error("Error fetching pubkeys from web3signer: %v", err)
 		return
 	}
 
-	indices, err := a.BeaconAdapter.GetValidatorIndicesByPubkeys(ctx, pubkeys)
+	indices, err := a.Beacon.GetValidatorIndicesByPubkeys(ctx, pubkeys)
 	if err != nil {
 		logger.Error("Error fetching validator indices from beacon node: %v", err)
 		return
@@ -65,18 +74,51 @@ func (a *DutiesChecker) chechLatestJustifiedEpoch(ctx context.Context) {
 		return
 	}
 
-	// Initialize a map to track success of both checks
-	proposalChecked := make(map[domain.ValidatorIndex]bool)
-	livenessChecked := make(map[domain.ValidatorIndex]bool)
-
-	a.checkProposals(ctx, justifiedEpoch, validatorIndices, proposalChecked)
-	a.checkLiveness(ctx, justifiedEpoch, validatorIndices, livenessChecked)
-
-	// Mark validators as checked only if both checks succeeded
-	for _, index := range validatorIndices {
-		if proposalChecked[index] && livenessChecked[index] {
-			a.CheckedEpochs[index] = justifiedEpoch
+	// Liveness notification logic
+	offline, _, allLive, err := a.checkLiveness(ctx, justifiedEpoch, validatorIndices)
+	if err != nil {
+		logger.Error("Error checking liveness for validators: %v", err)
+		return
+	}
+	if len(offline) > 0 && (!a.livenessStateSet || a.lastLivenessState) {
+		if notificationsEnabled[domain.ValidatorLiveness] {
+			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
+				logger.Warn("Error sending validator liveness notification: %v", err)
+			}
 		}
+		a.lastLivenessState = false
+		a.livenessStateSet = true
+	}
+	if allLive && (!a.livenessStateSet || !a.lastLivenessState) {
+		if notificationsEnabled[domain.ValidatorLiveness] {
+			if err := a.Notifier.SendValidatorLivenessNot(validatorIndices, true); err != nil {
+				logger.Warn("Error sending validator liveness notification: %v", err)
+			}
+		}
+		a.lastLivenessState = true
+		a.livenessStateSet = true
+	}
+
+	// Block proposal notification logic
+	proposed, missed, err := a.checkProposals(ctx, justifiedEpoch, validatorIndices)
+	if err != nil {
+		logger.Error("Error checking block proposals: %v", err)
+		return
+	}
+	if len(proposed) > 0 && notificationsEnabled[domain.BlockProposal] {
+		if err := a.Notifier.SendBlockProposalNot(proposed, int(justifiedEpoch), true); err != nil {
+			logger.Warn("Error sending block proposal notification: %v", err)
+		}
+	}
+	if len(missed) > 0 && notificationsEnabled[domain.BlockProposal] {
+		if err := a.Notifier.SendBlockProposalNot(missed, int(justifiedEpoch), false); err != nil {
+			logger.Warn("Error sending block proposal notification: %v", err)
+		}
+	}
+
+	// Mark validators as checked
+	for _, index := range validatorIndices {
+		a.CheckedEpochs[index] = justifiedEpoch
 	}
 }
 
@@ -84,64 +126,60 @@ func (a *DutiesChecker) checkLiveness(
 	ctx context.Context,
 	epochToTrack domain.Epoch,
 	indices []domain.ValidatorIndex,
-	livenessChecked map[domain.ValidatorIndex]bool,
-) {
+) (offline []domain.ValidatorIndex, online []domain.ValidatorIndex, allLive bool, err error) {
 	if len(indices) == 0 {
 		logger.Warn("No validators to check liveness for in epoch %d", epochToTrack)
-		return
+		return nil, nil, false, nil
 	}
 
-	livenessMap, err := a.BeaconAdapter.GetValidatorsLiveness(ctx, epochToTrack, indices)
+	livenessMap, err := a.Beacon.GetValidatorsLiveness(ctx, epochToTrack, indices)
 	if err != nil {
-		logger.Error("Error checking liveness for validators: %v", err)
-		return
+		return nil, nil, false, err
 	}
 
-	for _, index := range indices {
-		isLive, ok := livenessMap[index]
-		if !ok {
-			logger.Warn("⚠️ Liveness info not found for validator %d in epoch %d", index, epochToTrack)
-			continue
-		}
-		livenessChecked[index] = true
-		if !isLive {
-			logger.Warn("❌ Validator %d is not live in epoch %d", index, epochToTrack)
+	allLive = true
+	for _, idx := range indices {
+		isLive, ok := livenessMap[idx]
+		if !ok || !isLive {
+			offline = append(offline, idx)
+			allLive = false
 		} else {
-			logger.Info("✅ Validator %d is live in epoch %d", index, epochToTrack)
+			online = append(online, idx)
 		}
 	}
+	return offline, online, allLive, nil
 }
 
 func (a *DutiesChecker) checkProposals(
 	ctx context.Context,
 	epochToTrack domain.Epoch,
 	indices []domain.ValidatorIndex,
-	proposalChecked map[domain.ValidatorIndex]bool,
-) {
-	proposerDuties, err := a.BeaconAdapter.GetProposerDuties(ctx, epochToTrack, indices)
+) (proposed []domain.ValidatorIndex, missed []domain.ValidatorIndex, err error) {
+	proposerDuties, err := a.Beacon.GetProposerDuties(ctx, epochToTrack, indices)
 	if err != nil {
-		logger.Error("Error fetching proposer duties: %v", err)
-		return
+		return nil, nil, err
 	}
 
 	if len(proposerDuties) == 0 {
 		logger.Warn("No proposer duties for any validators in epoch %d", epochToTrack)
-		return
+		return nil, nil, nil
 	}
 
 	for _, duty := range proposerDuties {
-		didPropose, err := a.BeaconAdapter.DidProposeBlock(ctx, duty.Slot)
+		didPropose, err := a.Beacon.DidProposeBlock(ctx, duty.Slot)
 		if err != nil {
 			logger.Warn("⚠️ Could not determine if block was proposed at slot %d: %v", duty.Slot, err)
 			continue
 		}
-		proposalChecked[duty.ValidatorIndex] = true
 		if didPropose {
+			proposed = append(proposed, duty.ValidatorIndex)
 			logger.Info("✅ Validator %d successfully proposed a block at slot %d", duty.ValidatorIndex, duty.Slot)
 		} else {
+			missed = append(missed, duty.ValidatorIndex)
 			logger.Warn("❌ Validator %d was scheduled to propose at slot %d but did not", duty.ValidatorIndex, duty.Slot)
 		}
 	}
+	return proposed, missed, nil
 }
 
 func (a *DutiesChecker) getValidatorsToCheck(indices []domain.ValidatorIndex, epoch domain.Epoch) []domain.ValidatorIndex {

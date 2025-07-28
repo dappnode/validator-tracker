@@ -47,7 +47,7 @@ type CustomEndpoint struct {
 }
 
 // GetNotificationsEnabled retrieves the notifications from the DappManager API
-func (d *DappManagerAdapter) GetNotificationsEnabled(ctx context.Context) (map[string]bool, error) {
+func (d *DappManagerAdapter) GetNotificationsEnabled(ctx context.Context) (domain.ValidatorNotificationsEnabled, error) {
 	customEndpoints, err := d.getSignerManifestNotifications(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get notifications from signer manifest: %w", err)
@@ -57,13 +57,13 @@ func (d *DappManagerAdapter) GetNotificationsEnabled(ctx context.Context) (map[s
 	validCorrelationIDs := map[string]struct{}{
 		string(domain.ValidatorLiveness): {},
 		string(domain.ValidatorSlashed):  {},
-		string(domain.BlockProposed):     {},
+		string(domain.BlockProposal):     {},
 	}
 
-	notifications := make(map[string]bool)
+	notifications := make(domain.ValidatorNotificationsEnabled)
 	for _, endpoint := range customEndpoints {
 		if _, ok := validCorrelationIDs[endpoint.CorrelationId]; ok {
-			notifications[endpoint.CorrelationId] = endpoint.Enabled
+			notifications[domain.ValidatorNotification(endpoint.CorrelationId)] = endpoint.Enabled
 		}
 	}
 

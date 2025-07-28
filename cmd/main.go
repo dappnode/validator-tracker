@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/dappnode/validator-tracker/internal/adapters/beacon"
+	"github.com/dappnode/validator-tracker/internal/adapters/dappmanager"
+	"github.com/dappnode/validator-tracker/internal/adapters/notifier"
 	"github.com/dappnode/validator-tracker/internal/adapters/web3signer"
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/services"
@@ -22,6 +24,14 @@ func main() {
 	logger.Info("Loaded config: network=%s, beaconEndpoint=%s, web3SignerEndpoint=%s",
 		cfg.Network, cfg.BeaconEndpoint, cfg.Web3SignerEndpoint)
 
+	dappmanager := dappmanager.NewDappManagerAdapter(cfg.DappmanagerUrl, cfg.SignerDnpName)
+	notifier := notifier.NewNotifier(
+		cfg.NotifierUrl,
+		cfg.BeaconchaUrl,
+		cfg.Network,
+		cfg.SignerDnpName,
+	)
+
 	// Fetch validator pubkeys
 	web3Signer := web3signer.NewWeb3SignerAdapter(cfg.Web3SignerEndpoint)
 	pubkeys, err := web3Signer.GetValidatorPubkeys()
@@ -31,13 +41,13 @@ func main() {
 	logger.Info("Fetched %d pubkeys from web3signer", len(pubkeys))
 
 	// Initialize beacon chain adapter
-	adapter, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
+	beacon, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
 	if err != nil {
 		logger.Fatal("Failed to initialize beacon adapter: %v", err)
 	}
 
 	// Get validator indices from pubkeys
-	indices, err := adapter.GetValidatorIndicesByPubkeys(context.Background(), pubkeys)
+	indices, err := beacon.GetValidatorIndicesByPubkeys(context.Background(), pubkeys)
 	if err != nil {
 		logger.Fatal("Failed to get validator indices: %v", err)
 	}
@@ -51,10 +61,12 @@ func main() {
 	// Start the duties checker service in a goroutine
 	logger.Info("Starting duties checker for %d validators", len(indices))
 	dutiesChecker := &services.DutiesChecker{
-		BeaconAdapter:     adapter,
-		Web3SignerAdapter: web3Signer,
-		PollInterval:      1 * time.Minute,
-		CheckedEpochs:     make(map[domain.ValidatorIndex]domain.Epoch),
+		Beacon:        beacon,
+		Signer:        web3Signer,
+		Notifier:      notifier,
+		Dappmanager:   dappmanager,
+		PollInterval:  1 * time.Minute,
+		CheckedEpochs: make(map[domain.ValidatorIndex]domain.Epoch),
 	}
 	wg.Add(1)
 	go func() {
