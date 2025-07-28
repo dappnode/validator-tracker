@@ -92,6 +92,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	// Check for the first condition: 1 or more validators offline when all were previously live
 	if len(offline) > 0 && a.previouslyAllLive {
 		if notificationsEnabled[domain.ValidatorLiveness] {
+			logger.Debug("Sending notification for validators going offline: %v", offline)
 			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
@@ -102,6 +103,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	// Check for the second condition: all validators online after 1 or more were offline
 	if allLive && a.previouslyOffline {
 		if notificationsEnabled[domain.ValidatorLiveness] {
+			logger.Debug("Sending notification for all validators back online: %v", indices)
 			if err := a.Notifier.SendValidatorLivenessNot(indices, true); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
