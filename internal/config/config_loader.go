@@ -30,7 +30,7 @@ func LoadConfig() Config {
 	web3SignerEndpoint := fmt.Sprintf("http://web3signer.%s.dncore.dappnode:9000", network)
 	dappmanagerEndpoint := "http://dappmanager.dappnode"
 	notifierEndpoint := "http://notifier.dappnode:8080"
-	brainEndpoint := fmt.Sprintf("http://brain.web3signer-%s.dappnode:5000", network)
+	brainEndpoint := fmt.Sprintf("http://brain.web3signer-%s.dappnode", network)
 
 	// Allow override via environment variables
 	if envBeacon := os.Getenv("BEACON_ENDPOINT"); envBeacon != "" {
@@ -58,7 +58,7 @@ func LoadConfig() Config {
 	var dnpName string
 	if network == "mainnet" {
 		dnpName = "web3signer.dnp.dappnode.eth"
-		brainEndpoint = "http://brain.web3signer.dnp.dappnode.eth:8080"
+		brainEndpoint = "http://brain.web3signer.dappnode"
 	} else {
 		dnpName = fmt.Sprintf("web3signer-%s.dnp.dappnode.eth", network)
 	}

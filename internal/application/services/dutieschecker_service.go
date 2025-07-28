@@ -11,7 +11,7 @@ import (
 
 type DutiesChecker struct {
 	Beacon      ports.BeaconChainAdapter
-	Signer      ports.Web3SignerAdapter
+	Brain       ports.BrainAdapter
 	Notifier    ports.NotifierPort
 	Dappmanager ports.DappManagerPort
 
@@ -59,9 +59,9 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 		logger.Warn("Error fetching notifications enabled, notification will not be sent: %v", err)
 	}
 
-	pubkeys, err := a.Signer.GetValidatorPubkeys()
+	pubkeys, err := a.Brain.GetValidatorPubkeys()
 	if err != nil {
-		logger.Error("Error fetching pubkeys from web3signer: %v", err)
+		logger.Error("Error fetching pubkeys from brain: %v", err)
 		return err
 	}
 
