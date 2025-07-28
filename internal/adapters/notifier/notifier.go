@@ -11,6 +11,10 @@ import (
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 )
 
+// TODO: add correlation IDs for notifications
+// TODO: move beaconcha URL to call to action
+// TODO: discuss isBanner
+
 type Notifier struct {
 	BaseURL       string
 	BeaconchaUrl  string

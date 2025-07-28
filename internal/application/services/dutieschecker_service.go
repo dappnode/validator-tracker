@@ -32,18 +32,18 @@ func (a *DutiesChecker) Run(ctx context.Context) {
 	for {
 		select {
 		case <-ticker.C:
-			notificationsEnabled, err := a.Dappmanager.GetNotificationsEnabled(ctx)
-			if err != nil {
-				logger.Warn("Error fetching notifications enabled, notification will not be sent: %v", err)
-			}
-			a.checkLatestJustifiedEpoch(ctx, notificationsEnabled)
+			a.checkLatestJustifiedEpoch(ctx)
 		case <-ctx.Done():
 			return
 		}
 	}
 }
 
-func (a *DutiesChecker) checkLatestJustifiedEpoch(ctx context.Context, notificationsEnabled domain.ValidatorNotificationsEnabled) {
+func (a *DutiesChecker) checkLatestJustifiedEpoch(ctx context.Context) {
+	// TODO: we want to keep checking on error until?
+	// 1. info required to determine if notification was required to be sent
+	// 2. if notification x was suppose to be sent and could not
+
 	justifiedEpoch, err := a.Beacon.GetJustifiedEpoch(ctx)
 	if err != nil {
 		logger.Error("Error fetching justified epoch: %v", err)
@@ -55,6 +55,12 @@ func (a *DutiesChecker) checkLatestJustifiedEpoch(ctx context.Context, notificat
 	}
 	a.lastJustifiedEpoch = justifiedEpoch
 	logger.Info("New justified epoch %d detected.", justifiedEpoch)
+
+	// Check for notifications
+	notificationsEnabled, err := a.Dappmanager.GetNotificationsEnabled(ctx)
+	if err != nil {
+		logger.Warn("Error fetching notifications enabled, notification will not be sent: %v", err)
+	}
 
 	pubkeys, err := a.Signer.GetValidatorPubkeys()
 	if err != nil {
