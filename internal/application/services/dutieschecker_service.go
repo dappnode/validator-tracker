@@ -22,8 +22,8 @@ type DutiesChecker struct {
 	SlashedNotified map[domain.ValidatorIndex]bool
 
 	// Tracking previous states for notifications
-	previouslyAllLive bool
-	previouslyOffline bool
+	PreviouslyAllLive bool
+	PreviouslyOffline bool
 }
 
 func (a *DutiesChecker) Run(ctx context.Context) {
@@ -88,29 +88,30 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 
 	// Debug print: show offline, online, and allLive status
 	logger.Debug("Liveness check: offline=%v, online=%v, allLive=%v", offline, online, allLive)
-	logger.Debug("Previously all live: %v, previously offline: %v", a.previouslyAllLive, a.previouslyOffline)
+	logger.Debug("Previously all live: %v, previously offline: %v", a.PreviouslyAllLive, a.PreviouslyOffline)
 
 	// Check for the first condition: 1 or more validators offline when all were previously live
-	if len(offline) > 0 && a.previouslyAllLive {
+	if len(offline) > 0 && a.PreviouslyAllLive {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			logger.Debug("Sending notification for validators going offline: %v", offline)
 			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
-		a.previouslyOffline = true
+		a.PreviouslyAllLive = false
+		a.PreviouslyOffline = true
 	}
 
 	// Check for the second condition: all validators online after 1 or more were offline
-	if allLive && a.previouslyOffline {
+	if allLive && a.PreviouslyOffline {
 		if notificationsEnabled[domain.ValidatorLiveness] {
 			logger.Debug("Sending notification for all validators back online: %v", indices)
 			if err := a.Notifier.SendValidatorLivenessNot(indices, true); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
-		a.previouslyAllLive = true
-		a.previouslyOffline = false
+		a.PreviouslyAllLive = true
+		a.PreviouslyOffline = false
 	}
 
 	// Check block proposals (successful or missed)
