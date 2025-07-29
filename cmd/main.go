@@ -55,12 +55,14 @@ func main() {
 
 	// Start the duties checker service in a goroutine
 	dutiesChecker := &services.DutiesChecker{
-		Beacon:          beacon,
-		Brain:           brain,
-		Notifier:        notifier,
-		Dappmanager:     dappmanager,
-		PollInterval:    1 * time.Minute,
-		SlashedNotified: make(map[domain.ValidatorIndex]bool),
+		Beacon:            beacon,
+		Brain:             brain,
+		Notifier:          notifier,
+		Dappmanager:       dappmanager,
+		PollInterval:      1 * time.Minute,
+		SlashedNotified:   make(map[domain.ValidatorIndex]bool),
+		PreviouslyAllLive: true, // assume all validators were live at start
+		PreviouslyOffline: false,
 	}
 	wg.Add(1)
 	go func() {
