@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"os/signal"
 	"sync"
@@ -21,8 +22,15 @@ import (
 func main() {
 	// Load config
 	cfg := config.LoadConfig()
-	logger.Info("Loaded config: network=%s, beaconEndpoint=%s, web3SignerEndpoint=%s",
-		cfg.Network, cfg.BeaconEndpoint, cfg.Web3SignerEndpoint)
+	// Print the full config in pretty JSON format
+	{
+		b, err := json.MarshalIndent(cfg, "", "  ")
+		if err != nil {
+			logger.Info("Loaded config: %+v", cfg)
+		} else {
+			logger.Info("Loaded config:\n%s", string(b))
+		}
+	}
 
 	// Initialize adapters
 	dappmanager := dappmanager.NewDappManagerAdapter(cfg.DappmanagerUrl, cfg.SignerDnpName)
@@ -34,10 +42,10 @@ func main() {
 		cfg.SignerDnpName,
 	)
 	brain := brain.NewBrainAdapter(cfg.BrainUrl)
-	// TODO: do not err
 	beacon, err := beacon.NewBeaconAdapter(cfg.BeaconEndpoint)
+	// TODO: do not err on initialization, allow connection errors later. See https://github.com/attestantio/go-eth2-client/issues/254
 	if err != nil {
-		logger.Fatal("Failed to initialize beacon adapter: %v", err)
+		logger.Fatal("Failed to initialize beacon adapter. A live connection is required on startup: %v", err)
 	}
 
 	// Prepare context and WaitGroup for graceful shutdown
