@@ -32,6 +32,9 @@ func main() {
 		}
 	}
 
+	// Initialize network-specific notification correlation IDs
+	domain.InitNotifications(cfg.Network)
+
 	// Initialize adapters
 	dappmanager := dappmanager.NewDappManagerAdapter(cfg.DappmanagerUrl, cfg.SignerDnpName)
 	notifier := notifier.NewNotifier(

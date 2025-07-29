@@ -111,7 +111,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	var priority Priority
 	var status Status
 	var isBanner bool
-	correlationId := string(domain.ValidatorLiveness)
+	correlationId := string(domain.Notifications.Liveness)
 	var callToAction *CallToAction
 	beaconchaUrl := n.buildBeaconchaURL(validators)
 	if beaconchaUrl != "" {
@@ -154,7 +154,7 @@ func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) 
 	priority := Critical
 	status := Triggered
 	isBanner := true
-	correlationId := string(domain.ValidatorSlashed)
+	correlationId := string(domain.Notifications.Slashed)
 	callToAction := &CallToAction{
 		Title: "Remove validators",
 		URL:   n.BrainUrl,
@@ -180,7 +180,7 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 	var priority Priority
 	var status Status = Triggered
 	isBanner := true
-	correlationId := string(domain.BlockProposal)
+	correlationId := string(domain.Notifications.Proposal)
 	beaconchaUrl := n.buildBeaconchaURL(validators)
 	var callToAction *CallToAction
 	if beaconchaUrl != "" {
