@@ -121,8 +121,8 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 		}
 	}
 	if live {
-		title = fmt.Sprintf("Validator(s) Online: %s", indexesToString(validators))
-		body = fmt.Sprintf("✅ Validator(s) %s are back online on %s.", indexesToString(validators), n.Network)
+		title = fmt.Sprintf("All validators back online (%d)", len(validators))
+		body = fmt.Sprintf("✅ All validators are back online on %s (%d).", n.Network, len(validators))
 		priority = Info
 		status = Resolved
 		isBanner = false
@@ -215,7 +215,12 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 // Helper to join validator indexes as comma-separated string
 func indexesToString(indexes []domain.ValidatorIndex) string {
 	var s []string
-	for _, idx := range indexes {
+	max := 10
+	for i, idx := range indexes {
+		if i == max {
+			s = append(s, "...")
+			break
+		}
 		s = append(s, fmt.Sprintf("%d", idx))
 	}
 	return strings.Join(s, ",")
