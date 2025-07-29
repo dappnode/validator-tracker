@@ -111,7 +111,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	var priority Priority
 	var status Status
 	var isBanner bool
-	correlationId := string(domain.ValidatorLiveness)
+	correlationId := string(domain.Notifications.Liveness)
 	var callToAction *CallToAction
 	beaconchaUrl := n.buildBeaconchaURL(validators)
 	if beaconchaUrl != "" {
@@ -122,13 +122,13 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	}
 	if live {
 		title = fmt.Sprintf("All validators back online (%d)", len(validators))
-		body = fmt.Sprintf("✅ All validators are back online on %s (%d).", n.Network, len(validators))
+		body = fmt.Sprintf("✅ All validators are back online and atesting on %s (%d).", n.Network, len(validators))
 		priority = Info
 		status = Resolved
 		isBanner = false
 	} else {
 		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators))
-		body = fmt.Sprintf("❌ Validator(s) %s are offline on %s.", indexesToString(validators), n.Network)
+		body = fmt.Sprintf("❌ Validator(s) %s are not attesting on %s.", indexesToString(validators), n.Network)
 		priority = High
 		status = Triggered
 		isBanner = true
@@ -154,7 +154,7 @@ func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) 
 	priority := Critical
 	status := Triggered
 	isBanner := true
-	correlationId := string(domain.ValidatorSlashed)
+	correlationId := string(domain.Notifications.Slashed)
 	callToAction := &CallToAction{
 		Title: "Remove validators",
 		URL:   n.BrainUrl,
@@ -180,7 +180,7 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 	var priority Priority
 	var status Status = Triggered
 	isBanner := true
-	correlationId := string(domain.BlockProposal)
+	correlationId := string(domain.Notifications.Proposal)
 	beaconchaUrl := n.buildBeaconchaURL(validators)
 	var callToAction *CallToAction
 	if beaconchaUrl != "" {

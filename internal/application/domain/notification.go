@@ -2,11 +2,20 @@ package domain
 
 type ValidatorNotificationsEnabled map[ValidatorNotification]bool
 
-// create a enum with the validator notifications
 type ValidatorNotification string
 
-const (
-	ValidatorLiveness ValidatorNotification = "validator-liveness" // online/offline
-	ValidatorSlashed  ValidatorNotification = "validator-slashed"
-	BlockProposal     ValidatorNotification = "block-proposal"
-)
+type validatorNotifications struct {
+	Liveness ValidatorNotification
+	Slashed  ValidatorNotification
+	Proposal ValidatorNotification
+}
+
+var Notifications validatorNotifications
+
+func InitNotifications(network string) {
+	Notifications = validatorNotifications{
+		Liveness: ValidatorNotification(network + "-validator-liveness"),
+		Slashed:  ValidatorNotification(network + "-validator-slashed"),
+		Proposal: ValidatorNotification(network + "-block-proposal"),
+	}
+}

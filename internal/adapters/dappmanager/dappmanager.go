@@ -53,11 +53,11 @@ func (d *DappManagerAdapter) GetNotificationsEnabled(ctx context.Context) (domai
 		return nil, fmt.Errorf("failed to get notifications from signer manifest: %w", err)
 	}
 
-	// Build a set of valid correlation IDs from domain.ValidatorNotification
+	// Build a set of valid correlation IDs from domain.Notifications
 	validCorrelationIDs := map[string]struct{}{
-		string(domain.ValidatorLiveness): {},
-		string(domain.ValidatorSlashed):  {},
-		string(domain.BlockProposal):     {},
+		string(domain.Notifications.Liveness): {},
+		string(domain.Notifications.Slashed):  {},
+		string(domain.Notifications.Proposal): {},
 	}
 
 	notifications := make(domain.ValidatorNotificationsEnabled)
