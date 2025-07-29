@@ -18,8 +18,6 @@ import (
 	"github.com/attestantio/go-eth2-client/spec/phase0"
 )
 
-// TODO: should the adapter avoid returning err when initializing?
-
 type beaconAttestantClient struct {
 	client *_http.Service
 }
@@ -28,7 +26,7 @@ func NewBeaconAdapter(endpoint string) (ports.BeaconChainAdapter, error) {
 	zerolog.SetGlobalLevel(zerolog.WarnLevel)
 
 	customHttpClient := &http.Client{
-		Timeout: 2000 * time.Second,
+		Timeout: 20 * time.Second,
 	}
 
 	client, err := _http.New(context.Background(),

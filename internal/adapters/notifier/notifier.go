@@ -226,10 +226,6 @@ func (n *Notifier) buildBeaconchaURL(indexes []domain.ValidatorIndex) string {
 	if len(indexes) == 0 || n.BeaconchaUrl == "" {
 		return ""
 	}
-	// If only one validator, link directly to it
-	if len(indexes) == 1 {
-		return fmt.Sprintf("%s/validator/%d", n.BeaconchaUrl, indexes[0])
-	}
-	// Otherwise, link to the validators search page with comma-separated indexes
-	return fmt.Sprintf("%s/validators?search=%s", n.BeaconchaUrl, indexesToString(indexes))
+	// Always use dashboard?validators=... format for all cases
+	return fmt.Sprintf("%s/dashboard?validators=%s", n.BeaconchaUrl, indexesToString(indexes))
 }
