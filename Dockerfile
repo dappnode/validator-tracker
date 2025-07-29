@@ -1,5 +1,7 @@
-FROM golang:1.24-alpine AS builder
+FROM --platform=$BUILDPLATFORM golang:1.24-alpine AS builder
 
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR /app
 
 # Install git for Go modules
@@ -12,8 +14,8 @@ RUN go mod download
 # Copy the entire codebase
 COPY . .
 
-# Build the binary
-RUN go build -o validator-tracker ./cmd/main.go
+# Build a static binary for the target platform
+RUN CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -o validator-tracker ./cmd/main.go
 
 # Final image
 FROM alpine:3.21
