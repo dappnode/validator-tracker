@@ -116,7 +116,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	beaconchaUrl := n.buildBeaconchaURL(validators)
 	if beaconchaUrl != "" {
 		callToAction = &CallToAction{
-			Title: "View on Beaconcha",
+			Title: "Open in Explorer",
 			URL:   beaconchaUrl,
 		}
 	}
@@ -185,7 +185,7 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 	var callToAction *CallToAction
 	if beaconchaUrl != "" {
 		callToAction = &CallToAction{
-			Title: "View on Beaconcha",
+			Title: "Open in Explorer",
 			URL:   beaconchaUrl,
 		}
 	}
