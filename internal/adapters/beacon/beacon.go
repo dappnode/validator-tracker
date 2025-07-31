@@ -257,8 +257,19 @@ func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch
 	return livenessMap, nil
 }
 
-// GetSlashedValidators retrieves the indices of slashed validators. In the justified state.
+// GetSlashedValidators retrieves the indices of slashed validators in the justified state.
 func (b *beaconAttestantClient) GetSlashedValidators(ctx context.Context, indices []domain.ValidatorIndex) ([]domain.ValidatorIndex, error) {
+	if len(indices) == 0 {
+		// No validators to check; return immediately. Nice to have
+		return nil, nil
+	}
+
+	// Convert domain.ValidatorIndex to phase0.ValidatorIndex
+	beaconIndices := make([]phase0.ValidatorIndex, len(indices))
+	for i, idx := range indices {
+		beaconIndices[i] = phase0.ValidatorIndex(idx)
+	}
+
 	slashed, err := b.client.Validators(ctx, &api.ValidatorsOpts{
 		State: "justified",
 		// Only get validators in slashed states
@@ -266,12 +277,12 @@ func (b *beaconAttestantClient) GetSlashedValidators(ctx context.Context, indice
 			v1.ValidatorStateActiveSlashed,
 			v1.ValidatorStateExitedSlashed,
 		},
-		Indices: make([]phase0.ValidatorIndex, len(indices)),
+		Indices: beaconIndices,
 	})
-
 	if err != nil {
 		return nil, err
 	}
+
 	slashedIndices := make([]domain.ValidatorIndex, 0, len(slashed.Data))
 	for _, v := range slashed.Data {
 		slashedIndices = append(slashedIndices, domain.ValidatorIndex(v.Index))
