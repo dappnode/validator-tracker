@@ -68,6 +68,11 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 		return err
 	}
 
+	if len(pubkeys) == 0 {
+		logger.Debug("No pubkeys found in brain for epoch %d, nothing to check.", justifiedEpoch)
+		return nil
+	}
+
 	indices, err := a.Beacon.GetValidatorIndicesByPubkeys(ctx, pubkeys)
 	if err != nil {
 		logger.Error("Error fetching validator indices from beacon node: %v", err)
