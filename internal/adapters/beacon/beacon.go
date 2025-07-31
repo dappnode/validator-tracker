@@ -11,6 +11,7 @@ import (
 	v1 "github.com/attestantio/go-eth2-client/api/v1"
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/ports"
+	"github.com/dappnode/validator-tracker/internal/logger"
 	"github.com/rs/zerolog"
 
 	"github.com/attestantio/go-eth2-client/api"
@@ -59,12 +60,15 @@ func (b *beaconAttestantClient) GetJustifiedEpoch(ctx context.Context) (domain.E
 	return domain.Epoch(finality.Data.Justified.Epoch), nil
 }
 
-// internal/adapters/beaconchain_adapter.go
 func (b *beaconAttestantClient) GetValidatorDutiesBatch(ctx context.Context, epoch domain.Epoch, validatorIndices []domain.ValidatorIndex) ([]domain.ValidatorDuty, error) {
-	// Convert to phase0.ValidatorIndex
-	var indices []phase0.ValidatorIndex
-	for _, idx := range validatorIndices {
-		indices = append(indices, phase0.ValidatorIndex(idx))
+	if len(validatorIndices) == 0 {
+		logger.Debug("Called GetValidatorDutiesBatch with no validator indices, returning empty slice. Nothing to check.")
+		return nil, nil
+	}
+
+	indices := make([]phase0.ValidatorIndex, len(validatorIndices))
+	for i, idx := range validatorIndices {
+		indices[i] = phase0.ValidatorIndex(idx)
 	}
 
 	duties, err := b.client.AttesterDuties(ctx, &api.AttesterDutiesOpts{
@@ -82,7 +86,7 @@ func (b *beaconAttestantClient) GetValidatorDutiesBatch(ctx context.Context, epo
 			Slot:                  domain.Slot(d.Slot),
 			CommitteeIndex:        domain.CommitteeIndex(d.CommitteeIndex),
 			ValidatorCommitteeIdx: d.ValidatorCommitteeIndex,
-			ValidatorIndex:        domain.ValidatorIndex(d.ValidatorIndex), // new field
+			ValidatorIndex:        domain.ValidatorIndex(d.ValidatorIndex),
 		})
 	}
 
@@ -152,6 +156,11 @@ func (b *beaconAttestantClient) GetBlockAttestations(ctx context.Context, slot d
 }
 
 func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context, pubkeys []string) ([]domain.ValidatorIndex, error) {
+	if len(pubkeys) == 0 {
+		logger.Debug("Called GetValidatorIndicesByPubkeys with no pubkeys, nothing to check")
+		return nil, nil
+	}
+
 	var beaconPubkeys []phase0.BLSPubKey
 
 	// Convert hex pubkeys to BLS pubkeys
@@ -196,9 +205,14 @@ func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context
 
 // GetProposerDuties retrieves proposer duties for the given epoch and validator indices.
 func (b *beaconAttestantClient) GetProposerDuties(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) ([]domain.ProposerDuty, error) {
-	var beaconIndices []phase0.ValidatorIndex
-	for _, idx := range indices {
-		beaconIndices = append(beaconIndices, phase0.ValidatorIndex(idx))
+	if len(indices) == 0 {
+		logger.Debug("Called GetProposerDuties with no validator indices, returning empty slice. Nothing to check.")
+		return nil, nil
+	}
+
+	beaconIndices := make([]phase0.ValidatorIndex, len(indices))
+	for i, idx := range indices {
+		beaconIndices[i] = phase0.ValidatorIndex(idx)
 	}
 
 	resp, err := b.client.ProposerDuties(ctx, &api.ProposerDutiesOpts{
@@ -236,10 +250,14 @@ func (b *beaconAttestantClient) DidProposeBlock(ctx context.Context, slot domain
 }
 
 func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) (map[domain.ValidatorIndex]bool, error) {
-	// Convert to phase0.ValidatorIndex
-	var beaconIndices []phase0.ValidatorIndex
-	for _, idx := range indices {
-		beaconIndices = append(beaconIndices, phase0.ValidatorIndex(idx))
+	if len(indices) == 0 {
+		logger.Debug("Called GetValidatorsLiveness with no validator indices, returning empty map. Nothing to check.")
+		return map[domain.ValidatorIndex]bool{}, nil
+	}
+
+	beaconIndices := make([]phase0.ValidatorIndex, len(indices))
+	for i, idx := range indices {
+		beaconIndices[i] = phase0.ValidatorIndex(idx)
 	}
 
 	liveness, err := b.client.ValidatorLiveness(ctx, &api.ValidatorLivenessOpts{
@@ -260,6 +278,7 @@ func (b *beaconAttestantClient) GetValidatorsLiveness(ctx context.Context, epoch
 // GetSlashedValidators retrieves the indices of slashed validators in the justified state.
 func (b *beaconAttestantClient) GetSlashedValidators(ctx context.Context, indices []domain.ValidatorIndex) ([]domain.ValidatorIndex, error) {
 	if len(indices) == 0 {
+		logger.Debug("Called GetSlashedValidators with no validator indices, returning empty slice. Nothing to check.")
 		// No validators to check; return immediately. Nice to have
 		return nil, nil
 	}
