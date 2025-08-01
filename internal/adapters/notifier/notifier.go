@@ -113,26 +113,26 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	var isBanner bool
 	correlationId := string(domain.Notifications.Liveness)
 	var callToAction *CallToAction
-	beaconchaUrl := n.buildBeaconchaURL(validators)
+	   beaconchaUrl := n.buildBeaconchaURL(validators)
 	if beaconchaUrl != "" {
 		callToAction = &CallToAction{
 			Title: "Open in Explorer",
 			URL:   beaconchaUrl,
 		}
 	}
-	if live {
-		title = fmt.Sprintf("All validators back online (%d)", len(validators))
-		body = fmt.Sprintf("✅ All validators are back online and atesting on %s (%d).", n.Network, len(validators))
-		priority = Info
-		status = Resolved
-		isBanner = false
-	} else {
-		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators))
-		body = fmt.Sprintf("❌ Validator(s) %s are not attesting on %s.", indexesToString(validators), n.Network)
-		priority = High
-		status = Triggered
-		isBanner = true
-	}
+	   if live {
+			   title = fmt.Sprintf("All validators back online (%d)", len(validators))
+			   body = fmt.Sprintf("✅ All validators are back online and atesting on %s (%d).", n.Network, len(validators))
+			   priority = Info
+			   status = Resolved
+			   isBanner = false
+	   } else {
+			   title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators, true))
+			   body = fmt.Sprintf("❌ Validator(s) %s are not attesting on %s.", indexesToString(validators, true), n.Network)
+			   priority = High
+			   status = Triggered
+			   isBanner = true
+	   }
 	payload := NotificationPayload{
 		Title:         title,
 		Body:          body,
@@ -149,8 +149,8 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 
 // SendValidatorsSlashedNot sends a notification when one or more validators are slashed.
 func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) error {
-	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators))
-	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators), n.Network)
+	   title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators, true))
+	   body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators, true), n.Network)
 	priority := Critical
 	status := Triggered
 	isBanner := true
@@ -189,15 +189,15 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 			URL:   beaconchaUrl,
 		}
 	}
-	if proposed {
-		title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators))
-		body = fmt.Sprintf("✅ Validator(s) %s proposed a block at epoch %d on %s.", indexesToString(validators), epoch, n.Network)
-		priority = Info
-	} else {
-		title = fmt.Sprintf("Block Missed: %s", indexesToString(validators))
-		body = fmt.Sprintf("❌ Validator(s) %s missed a block proposal at epoch %d on %s.", indexesToString(validators), epoch, n.Network)
-		priority = High
-	}
+	   if proposed {
+			   title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators, true))
+			   body = fmt.Sprintf("✅ Validator(s) %s proposed a block at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
+			   priority = Info
+	   } else {
+			   title = fmt.Sprintf("Block Missed: %s", indexesToString(validators, true))
+			   body = fmt.Sprintf("❌ Validator(s) %s missed a block proposal at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
+			   priority = High
+	   }
 	payload := NotificationPayload{
 		Title:         title,
 		Body:          body,
@@ -213,24 +213,25 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 }
 
 // Helper to join validator indexes as comma-separated string
-func indexesToString(indexes []domain.ValidatorIndex) string {
-	var s []string
-	max := 10
-	for i, idx := range indexes {
-		if i == max {
-			s = append(s, "...")
-			break
-		}
-		s = append(s, fmt.Sprintf("%d", idx))
-	}
-	return strings.Join(s, ",")
+// If truncate is true, only the first 10 are shown, then '...'.
+func indexesToString(indexes []domain.ValidatorIndex, truncate bool) string {
+	   var s []string
+	   max := 10
+	   for i, idx := range indexes {
+			   if truncate && i == max {
+					   s = append(s, "...")
+					   break
+			   }
+			   s = append(s, fmt.Sprintf("%d", idx))
+	   }
+	   return strings.Join(s, ",")
 }
 
 // Helper to build beaconcha URL for multiple validators
 func (n *Notifier) buildBeaconchaURL(indexes []domain.ValidatorIndex) string {
-	if len(indexes) == 0 || n.BeaconchaUrl == "" {
-		return ""
-	}
-	// Always use dashboard?validators=... format for all cases
-	return fmt.Sprintf("%s/dashboard?validators=%s", n.BeaconchaUrl, indexesToString(indexes))
+	   if len(indexes) == 0 || n.BeaconchaUrl == "" {
+			   return ""
+	   }
+	   // Do not truncate for URLs
+	   return fmt.Sprintf("%s/dashboard?validators=%s", n.BeaconchaUrl, indexesToString(indexes, false))
 }
