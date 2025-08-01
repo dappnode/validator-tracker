@@ -127,8 +127,8 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 		status = Resolved
 		isBanner = false
 	} else {
-		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators))
-		body = fmt.Sprintf("❌ Validator(s) %s are not attesting on %s.", indexesToString(validators), n.Network)
+		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators, true))
+		body = fmt.Sprintf("❌ Validator(s) %s are not attesting on %s.", indexesToString(validators, true), n.Network)
 		priority = High
 		status = Triggered
 		isBanner = true
@@ -149,8 +149,8 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 
 // SendValidatorsSlashedNot sends a notification when one or more validators are slashed.
 func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) error {
-	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators))
-	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators), n.Network)
+	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators, true))
+	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators, true), n.Network)
 	priority := Critical
 	status := Triggered
 	isBanner := true
@@ -190,12 +190,12 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 		}
 	}
 	if proposed {
-		title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators))
-		body = fmt.Sprintf("✅ Validator(s) %s proposed a block at epoch %d on %s.", indexesToString(validators), epoch, n.Network)
+		title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators, true))
+		body = fmt.Sprintf("✅ Validator(s) %s proposed a block at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
 		priority = Info
 	} else {
-		title = fmt.Sprintf("Block Missed: %s", indexesToString(validators))
-		body = fmt.Sprintf("❌ Validator(s) %s missed a block proposal at epoch %d on %s.", indexesToString(validators), epoch, n.Network)
+		title = fmt.Sprintf("Block Missed: %s", indexesToString(validators, true))
+		body = fmt.Sprintf("❌ Validator(s) %s missed a block proposal at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
 		priority = High
 	}
 	payload := NotificationPayload{
@@ -213,11 +213,12 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 }
 
 // Helper to join validator indexes as comma-separated string
-func indexesToString(indexes []domain.ValidatorIndex) string {
+// If truncate is true, only the first 10 are shown, then '...'.
+func indexesToString(indexes []domain.ValidatorIndex, truncate bool) string {
 	var s []string
 	max := 10
 	for i, idx := range indexes {
-		if i == max {
+		if truncate && i == max {
 			s = append(s, "...")
 			break
 		}
@@ -231,6 +232,6 @@ func (n *Notifier) buildBeaconchaURL(indexes []domain.ValidatorIndex) string {
 	if len(indexes) == 0 || n.BeaconchaUrl == "" {
 		return ""
 	}
-	// Always use dashboard?validators=... format for all cases
-	return fmt.Sprintf("%s/dashboard?validators=%s", n.BeaconchaUrl, indexesToString(indexes))
+	// Do not truncate for URLs
+	return fmt.Sprintf("%s/dashboard?validators=%s", n.BeaconchaUrl, indexesToString(indexes, false))
 }
