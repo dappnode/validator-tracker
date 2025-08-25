@@ -61,7 +61,6 @@ const (
 	Medium   Priority = "medium"
 	High     Priority = "high"
 	Critical Priority = "critical"
-	Info     Priority = "info"
 )
 
 type Status string
@@ -123,7 +122,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	if live {
 		title = fmt.Sprintf("All validators back online (%d)", len(validators))
 		body = fmt.Sprintf("✅ All validators are back online and atesting on %s (%d).", n.Network, len(validators))
-		priority = Info
+		priority = Low
 		status = Resolved
 		isBanner = false
 	} else {
@@ -192,7 +191,7 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 	if proposed {
 		title = fmt.Sprintf("Block Proposed: %s", indexesToString(validators, true))
 		body = fmt.Sprintf("✅ Validator(s) %s proposed a block at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
-		priority = Info
+		priority = Low
 	} else {
 		title = fmt.Sprintf("Block Missed: %s", indexesToString(validators, true))
 		body = fmt.Sprintf("❌ Validator(s) %s missed a block proposal at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
