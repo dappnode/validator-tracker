@@ -99,7 +99,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	if len(offline) > 0 && a.PreviouslyAllLive {
 		if notificationsEnabled[domain.Notifications.Liveness] {
 			logger.Debug("Sending notification for validators going offline: %v", offline)
-			if err := a.Notifier.SendValidatorLivenessNot(offline, false); err != nil {
+			if err := a.Notifier.SendValidatorLivenessNot(offline, justifiedEpoch, false); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
@@ -111,7 +111,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	if allLive && a.PreviouslyOffline {
 		if notificationsEnabled[domain.Notifications.Liveness] {
 			logger.Debug("Sending notification for all validators back online: %v", indices)
-			if err := a.Notifier.SendValidatorLivenessNot(indices, true); err != nil {
+			if err := a.Notifier.SendValidatorLivenessNot(indices, justifiedEpoch, true); err != nil {
 				logger.Warn("Error sending validator liveness notification: %v", err)
 			}
 		}
@@ -126,12 +126,12 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 		return err
 	}
 	if len(proposed) > 0 && notificationsEnabled[domain.Notifications.Proposal] {
-		if err := a.Notifier.SendBlockProposalNot(proposed, int(justifiedEpoch), true); err != nil {
+		if err := a.Notifier.SendBlockProposalNot(proposed, justifiedEpoch, true); err != nil {
 			logger.Warn("Error sending block proposal notification: %v", err)
 		}
 	}
 	if len(missed) > 0 && notificationsEnabled[domain.Notifications.Proposal] {
-		if err := a.Notifier.SendBlockProposalNot(missed, int(justifiedEpoch), false); err != nil {
+		if err := a.Notifier.SendBlockProposalNot(missed, justifiedEpoch, false); err != nil {
 			logger.Warn("Error sending block proposal notification: %v", err)
 		}
 	}
@@ -153,7 +153,7 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	}
 
 	if len(toNotify) > 0 && notificationsEnabled[domain.Notifications.Slashed] {
-		if err := a.Notifier.SendValidatorsSlashedNot(toNotify); err != nil {
+		if err := a.Notifier.SendValidatorsSlashedNot(toNotify, justifiedEpoch); err != nil {
 			logger.Warn("Error sending validator slashed notification: %v", err)
 		}
 	}
