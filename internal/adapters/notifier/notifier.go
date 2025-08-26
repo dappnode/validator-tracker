@@ -121,13 +121,13 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 	}
 	if live {
 		title = fmt.Sprintf("All validators back online (%d)", len(validators))
-		body = fmt.Sprintf("✅ All validators are back online and atesting on %s (%d).", n.Network, len(validators))
+		body = fmt.Sprintf("✅ All validators are back online and atesting at epoch %d on %s (%d).", epoch, n.Network, len(validators))
 		priority = Low
 		status = Resolved
 		isBanner = false
 	} else {
 		title = fmt.Sprintf("Validator(s) Offline: %s", indexesToString(validators, true))
-		body = fmt.Sprintf("❌ Validator(s) %s are not attesting on %s.", indexesToString(validators, true), n.Network)
+		body = fmt.Sprintf("❌ Validator(s) %s are not attesting at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
 		priority = High
 		status = Triggered
 		isBanner = true
@@ -149,7 +149,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 // SendValidatorsSlashedNot sends a notification when one or more validators are slashed.
 func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex, epoch domain.Epoch) error {
 	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators, true))
-	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators, true), n.Network)
+	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed at epoch %d on %s! Immediate attention required.", indexesToString(validators, true), epoch, n.Network)
 	priority := Critical
 	status := Triggered
 	isBanner := true
