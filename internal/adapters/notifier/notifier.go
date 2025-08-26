@@ -105,7 +105,7 @@ func (n *Notifier) sendNotification(payload NotificationPayload) error {
 }
 
 // SendValidatorLivenessNot sends a notification when one or more validators go offline or online.
-func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, live bool) error {
+func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, epoch domain.Epoch, live bool) error {
 	var title, body string
 	var priority Priority
 	var status Status
@@ -147,7 +147,7 @@ func (n *Notifier) SendValidatorLivenessNot(validators []domain.ValidatorIndex, 
 }
 
 // SendValidatorsSlashedNot sends a notification when one or more validators are slashed.
-func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) error {
+func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex, epoch domain.Epoch) error {
 	title := fmt.Sprintf("Validator(s) Slashed: %s", indexesToString(validators, true))
 	body := fmt.Sprintf("🚨 Validator(s) %s have been slashed on %s! Immediate attention required.", indexesToString(validators, true), n.Network)
 	priority := Critical
@@ -174,7 +174,7 @@ func (n *Notifier) SendValidatorsSlashedNot(validators []domain.ValidatorIndex) 
 }
 
 // SendBlockProposalNot sends a notification when a block is proposed or missed by one or more validators.
-func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoch int, proposed bool) error {
+func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoch domain.Epoch, proposed bool) error {
 	var title, body string
 	var priority Priority
 	var status Status = Triggered
