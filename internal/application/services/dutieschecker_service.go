@@ -2,6 +2,7 @@ package services
 
 import (
 	"context"
+	"slices"
 	"time"
 
 	"github.com/dappnode/validator-tracker/internal/application/domain"
@@ -121,20 +122,22 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 		a.PreviouslyOffline = false
 	}
 
-	// Check block proposals (successful or missed)
-	proposed, missed, err := a.checkProposals(ctx, justifiedEpoch, indices)
+	// Fetch sync committee membership for this epoch
+	syncCommitteeMap, err := a.Beacon.GetSyncCommittee(ctx, justifiedEpoch, indices)
 	if err != nil {
-		logger.Error("Error checking block proposals: %v", err)
-		return err
-	}
-	if len(proposed) > 0 && notificationsEnabled[domain.Notifications.Proposal] {
-		if err := a.Notifier.SendBlockProposalNot(proposed, justifiedEpoch, true); err != nil {
-			logger.Warn("Error sending block proposal notification: %v", err)
+		logger.Warn("Error fetching sync committee membership: %v", err)
+	} else {
+		var inCommittee []domain.ValidatorIndex
+		for _, idx := range indices {
+			if syncCommitteeMap[idx] {
+				inCommittee = append(inCommittee, idx)
+			}
 		}
-	}
-	if len(missed) > 0 && notificationsEnabled[domain.Notifications.Proposal] {
-		if err := a.Notifier.SendBlockProposalNot(missed, justifiedEpoch, false); err != nil {
-			logger.Warn("Error sending block proposal notification: %v", err)
+		if len(inCommittee) > 0 && notificationsEnabled[domain.Notifications.Committee] {
+			logger.Info("Sending committee notification for validators: %v", inCommittee)
+			if err := a.Notifier.SendCommitteeNotification(inCommittee, justifiedEpoch); err != nil {
+				logger.Warn("Error sending committee notification: %v", err)
+			}
 		}
 	}
 
@@ -157,6 +160,73 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 	if len(toNotify) > 0 && notificationsEnabled[domain.Notifications.Slashed] {
 		if err := a.Notifier.SendValidatorsSlashedNot(toNotify, justifiedEpoch); err != nil {
 			logger.Warn("Error sending validator slashed notification: %v", err)
+		}
+	}
+
+	// Check block proposals (successful or missed)
+	proposed, missed, err := a.checkProposals(ctx, justifiedEpoch, indices)
+	if err != nil {
+		logger.Error("Error checking block proposals: %v", err)
+		return err
+	}
+	if len(proposed) > 0 && notificationsEnabled[domain.Notifications.Proposal] {
+		proposedIndices := make([]domain.ValidatorIndex, len(proposed))
+		for i, p := range proposed {
+			proposedIndices[i] = p.ValidatorIndex
+		}
+		if err := a.Notifier.SendBlockProposalNot(proposedIndices, justifiedEpoch, true); err != nil {
+			logger.Warn("Error sending block proposal notification: %v", err)
+		}
+	}
+	if len(missed) > 0 && notificationsEnabled[domain.Notifications.Proposal] {
+		missedIndices := make([]domain.ValidatorIndex, len(missed))
+		for i, m := range missed {
+			missedIndices[i] = m.ValidatorIndex
+		}
+		if err := a.Notifier.SendBlockProposalNot(missedIndices, justifiedEpoch, false); err != nil {
+			logger.Warn("Error sending block proposal notification: %v", err)
+		}
+	}
+
+	// Persist block proposal data
+	for _, p := range proposed {
+		if err := a.ValidatorStorage.UpsertValidatorBlockProposal(ctx, uint64(p.ValidatorIndex), uint64(p.Slot), uint64(justifiedEpoch), nil); err != nil {
+			logger.Warn("Failed to persist block proposal for validator %d: %v", p.ValidatorIndex, err)
+		}
+	}
+	for _, m := range missed {
+		if err := a.ValidatorStorage.UpsertValidatorBlockProposal(ctx, uint64(m.ValidatorIndex), uint64(m.Slot), uint64(justifiedEpoch), nil); err != nil {
+			logger.Warn("Failed to persist missed proposal for validator %d: %v", m.ValidatorIndex, err)
+		}
+	}
+
+	// Persist liveness, committee, attestation reward, and slashed status for all checked validators
+	for _, idx := range indices {
+		var liveness *bool
+		isLive := slices.Contains(online, idx)
+		liveness = new(bool)
+		*liveness = isLive
+
+		var inSyncCommittee *bool
+		if syncCommitteeMap != nil {
+			val := syncCommitteeMap[idx]
+			inSyncCommittee = new(bool)
+			*inSyncCommittee = val
+		}
+
+		var slashedFlag *bool
+		isSlashed := slices.Contains(slashed, idx)
+		slashedFlag = new(bool)
+		*slashedFlag = isSlashed
+
+		var attestationReward *uint64
+		var syncCommitteeReward *uint64
+		// TODO: fetch attestation and sync committee rewards if available. For now, set to nil.
+		attestationReward = nil
+		syncCommitteeReward = nil
+
+		if err := a.ValidatorStorage.UpsertValidatorEpochStatus(ctx, uint64(idx), uint64(justifiedEpoch), liveness, inSyncCommittee, syncCommitteeReward, attestationReward, slashedFlag); err != nil {
+			logger.Warn("Failed to persist epoch status for validator %d: %v", idx, err)
 		}
 	}
 
@@ -197,7 +267,7 @@ func (a *DutiesChecker) checkProposals(
 	ctx context.Context,
 	epochToTrack domain.Epoch,
 	indices []domain.ValidatorIndex,
-) (proposed []domain.ValidatorIndex, missed []domain.ValidatorIndex, err error) {
+) (proposed []domain.ProposerDuty, missed []domain.ProposerDuty, err error) {
 	proposerDuties, err := a.Beacon.GetProposerDuties(ctx, epochToTrack, indices)
 	if err != nil {
 		return nil, nil, err
@@ -215,10 +285,10 @@ func (a *DutiesChecker) checkProposals(
 			continue
 		}
 		if didPropose {
-			proposed = append(proposed, duty.ValidatorIndex)
+			proposed = append(proposed, duty)
 			logger.Info("✅ Validator %d successfully proposed a block at slot %d", duty.ValidatorIndex, duty.Slot)
 		} else {
-			missed = append(missed, duty.ValidatorIndex)
+			missed = append(missed, duty)
 			logger.Warn("❌ Validator %d was scheduled to propose at slot %d but did not", duty.ValidatorIndex, duty.Slot)
 		}
 	}

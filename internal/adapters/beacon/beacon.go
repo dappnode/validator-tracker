@@ -309,6 +309,33 @@ func (b *beaconAttestantClient) GetSlashedValidators(ctx context.Context, indice
 	return slashedIndices, nil
 }
 
+// GetSyncCommittee retrieves if the indices are in the current sync committee
+func (b *beaconAttestantClient) GetSyncCommittee(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) (map[domain.ValidatorIndex]bool, error) {
+	if len(indices) == 0 {
+		logger.Debug("Called GetSyncCommittee with no validator indices, returning empty map. Nothing to check.")
+		return map[domain.ValidatorIndex]bool{}, nil
+	}
+
+	beaconIndices := make([]phase0.ValidatorIndex, len(indices))
+	for i, idx := range indices {
+		beaconIndices[i] = phase0.ValidatorIndex(idx)
+	}
+
+	epochVal := phase0.Epoch(epoch)
+	syncCommittee, err := b.client.SyncCommittee(ctx, &api.SyncCommitteeOpts{
+		Epoch: &epochVal,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	syncCommitteeMap := make(map[domain.ValidatorIndex]bool)
+	for _, idx := range syncCommittee.Data.Validators {
+		syncCommitteeMap[domain.ValidatorIndex(idx)] = true
+	}
+	return syncCommitteeMap, nil
+}
+
 // enum for consensus client
 type ConsensusClient string
 

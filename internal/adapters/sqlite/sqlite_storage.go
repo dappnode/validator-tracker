@@ -33,6 +33,7 @@ func migrate(db *sql.DB) error {
 			liveness BOOLEAN,
 			in_sync_committee BOOLEAN,
 			sync_committee_reward INTEGER,
+			attestation_reward INTEGER, 
 			slashed BOOLEAN,
 			updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
 			PRIMARY KEY (index, epoch)
@@ -67,17 +68,18 @@ func migrate(db *sql.DB) error {
 
 // UpsertValidatorEpochStatus inserts or updates validator epoch status. It will update fields if the record exists.
 // If any of parameters are nil, the corresponding fields will be set to NULL in the database.
-func (s *SQLiteStorage) UpsertValidatorEpochStatus(ctx context.Context, index uint64, epoch uint64, liveness *bool, inSyncCommittee *bool, syncCommitteeReward *uint64, slashed *bool) error {
+func (s *SQLiteStorage) UpsertValidatorEpochStatus(ctx context.Context, index uint64, epoch uint64, liveness *bool, inSyncCommittee *bool, syncCommitteeReward *uint64, attestationReward *uint64, slashed *bool) error {
 	_, err := s.DB.ExecContext(ctx,
-		`INSERT INTO validator_epoch_status (index, epoch, liveness, in_sync_committee, sync_committee_reward, slashed)
-		VALUES (?, ?, ?, ?, ?, ?)
+		`INSERT INTO validator_epoch_status (index, epoch, liveness, in_sync_committee, sync_committee_reward, attestation_reward, slashed)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(index, epoch) DO UPDATE SET
 			liveness=excluded.liveness,
 			in_sync_committee=excluded.in_sync_committee,
 			sync_committee_reward=excluded.sync_committee_reward,
+			attestation_reward=excluded.attestation_reward,
 			slashed=excluded.slashed,
 			updated_at=CURRENT_TIMESTAMP;`,
-		index, epoch, liveness, inSyncCommittee, syncCommitteeReward, slashed,
+		index, epoch, liveness, inSyncCommittee, syncCommitteeReward, attestationReward, slashed,
 	)
 	return err
 }

@@ -8,7 +8,7 @@ import (
 // in a hexagonal architecture.
 type ValidatorStoragePort interface {
 	// UpsertValidatorEpochStatus inserts or updates validator epoch status.
-	UpsertValidatorEpochStatus(ctx context.Context, index uint64, epoch uint64, liveness *bool, inSyncCommittee *bool, syncCommitteeReward *uint64, slashed *bool) error
+	UpsertValidatorEpochStatus(ctx context.Context, index uint64, epoch uint64, liveness *bool, inSyncCommittee *bool, syncCommitteeReward *uint64, attestationReward *uint64, slashed *bool) error
 
 	// UpsertValidatorBlockProposal inserts or updates a block proposal for a validator.
 	UpsertValidatorBlockProposal(ctx context.Context, index uint64, slot uint64, epoch uint64, blockReward *uint64) error
