@@ -24,6 +24,8 @@ type DutiesChecker struct {
 	// Tracking previous states for notifications
 	PreviouslyAllLive bool
 	PreviouslyOffline bool
+
+	ValidatorStorage ports.ValidatorStoragePort // <-- added field for storage
 }
 
 func (a *DutiesChecker) Run(ctx context.Context) {
