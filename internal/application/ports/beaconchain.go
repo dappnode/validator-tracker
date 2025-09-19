@@ -20,4 +20,5 @@ type BeaconChainAdapter interface {
 	DidProposeBlock(ctx context.Context, slot domain.Slot) (bool, error)
 
 	GetValidatorsLiveness(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) (map[domain.ValidatorIndex]bool, error)
+	GetSyncCommittee(ctx context.Context, epoch domain.Epoch, indices []domain.ValidatorIndex) (map[domain.ValidatorIndex]bool, error)
 }

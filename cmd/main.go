@@ -13,6 +13,7 @@ import (
 	"github.com/dappnode/validator-tracker/internal/adapters/brain"
 	"github.com/dappnode/validator-tracker/internal/adapters/dappmanager"
 	"github.com/dappnode/validator-tracker/internal/adapters/notifier"
+	"github.com/dappnode/validator-tracker/internal/adapters/sqlite"
 	"github.com/dappnode/validator-tracker/internal/application/domain"
 	"github.com/dappnode/validator-tracker/internal/application/services"
 	"github.com/dappnode/validator-tracker/internal/config"
@@ -51,6 +52,12 @@ func main() {
 		logger.Fatal("Failed to initialize beacon adapter. A live connection is required on startup: %v", err)
 	}
 
+	// Initialize SQLite storage adapter
+	storage, err := sqlite.NewSQLiteStorage("./validator_tracker.db")
+	if err != nil {
+		logger.Fatal("Failed to initialize SQLite storage: %v", err)
+	}
+
 	// Prepare context and WaitGroup for graceful shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -66,6 +73,7 @@ func main() {
 		SlashedNotified:   make(map[domain.ValidatorIndex]bool),
 		PreviouslyAllLive: true, // assume all validators were live at start
 		PreviouslyOffline: false,
+		ValidatorStorage:  storage, // <-- new field for storage
 	}
 	wg.Add(1)
 	go func() {
