@@ -316,11 +316,6 @@ func (b *beaconAttestantClient) GetSyncCommittee(ctx context.Context, epoch doma
 		return map[domain.ValidatorIndex]bool{}, nil
 	}
 
-	beaconIndices := make([]phase0.ValidatorIndex, len(indices))
-	for i, idx := range indices {
-		beaconIndices[i] = phase0.ValidatorIndex(idx)
-	}
-
 	epochVal := phase0.Epoch(epoch)
 	syncCommittee, err := b.client.SyncCommittee(ctx, &api.SyncCommitteeOpts{
 		Epoch: &epochVal,
