@@ -24,7 +24,7 @@ type Config struct {
 func LoadConfig() Config {
 	network := os.Getenv("NETWORK")
 	if network == "" {
-		network = "hoodi" // default
+		network = "mainnet"
 	}
 
 	// Build the dynamic endpoints
@@ -52,12 +52,17 @@ func LoadConfig() Config {
 	}
 
 	// Load poll interval for duties checker
-	pollIntervalSeconds := 60 // default to 60 seconds
+	var pollIntervalSeconds int
+	if network == "gnosis" {
+		pollIntervalSeconds = 30 // default to 30 seconds for gnosis
+	} else {
+		pollIntervalSeconds = 60 // default to 60 seconds for other networks
+	}
 	if envPollInterval := os.Getenv("DUTIES_CHECKER_POLL_INTERVAL_SECONDS"); envPollInterval != "" {
 		if parsed, err := strconv.Atoi(envPollInterval); err == nil && parsed > 0 {
 			pollIntervalSeconds = parsed
 		} else {
-			logger.Warn("Invalid DUTIES_CHECKER_POLL_INTERVAL_SECONDS value '%s', using default 60 seconds", envPollInterval)
+			logger.Warn("Invalid DUTIES_CHECKER_POLL_INTERVAL_SECONDS value '%s', using default %d seconds", envPollInterval, pollIntervalSeconds)
 		}
 	}
 
