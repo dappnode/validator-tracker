@@ -62,7 +62,7 @@ func main() {
 		Brain:             brain,
 		Notifier:          notifier,
 		Dappmanager:       dappmanager,
-		PollInterval:      1 * time.Minute,
+		PollInterval:      time.Duration(cfg.PollIntervalSeconds) * time.Second,
 		SlashedNotified:   make(map[domain.ValidatorIndex]bool),
 		PreviouslyAllLive: true, // assume all validators were live at start
 		PreviouslyOffline: false,

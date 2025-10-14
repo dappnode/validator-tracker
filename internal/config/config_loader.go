@@ -3,26 +3,28 @@ package config
 import (
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/dappnode/validator-tracker/internal/logger"
 )
 
 type Config struct {
-	BeaconEndpoint     string
-	Web3SignerEndpoint string
-	Network            string
-	SignerDnpName      string
-	BeaconchaUrl       string
-	DappmanagerUrl     string
-	NotifierUrl        string
-	BrainUrl           string
+	BeaconEndpoint      string
+	Web3SignerEndpoint  string
+	Network             string
+	SignerDnpName       string
+	BeaconchaUrl        string
+	DappmanagerUrl      string
+	NotifierUrl         string
+	BrainUrl            string
+	PollIntervalSeconds int
 }
 
 func LoadConfig() Config {
 	network := os.Getenv("NETWORK")
 	if network == "" {
-		network = "hoodi" // default
+		network = "mainnet"
 	}
 
 	// Build the dynamic endpoints
@@ -47,6 +49,21 @@ func LoadConfig() Config {
 	}
 	if envBrain := os.Getenv("BRAIN_URL"); envBrain != "" {
 		brainEndpoint = envBrain
+	}
+
+	// Load poll interval for duties checker
+	var pollIntervalSeconds int
+	if network == "gnosis" {
+		pollIntervalSeconds = 30 // default to 30 seconds for gnosis
+	} else {
+		pollIntervalSeconds = 60 // default to 60 seconds for other networks
+	}
+	if envPollInterval := os.Getenv("DUTIES_CHECKER_POLL_INTERVAL_SECONDS"); envPollInterval != "" {
+		if parsed, err := strconv.Atoi(envPollInterval); err == nil && parsed > 0 {
+			pollIntervalSeconds = parsed
+		} else {
+			logger.Warn("Invalid DUTIES_CHECKER_POLL_INTERVAL_SECONDS value '%s', using default %d seconds", envPollInterval, pollIntervalSeconds)
+		}
 	}
 
 	// Normalize network name for logs
@@ -80,13 +97,14 @@ func LoadConfig() Config {
 	}
 
 	return Config{
-		BeaconEndpoint:     beaconEndpoint,
-		Web3SignerEndpoint: web3SignerEndpoint,
-		Network:            network,
-		SignerDnpName:      dnpName,
-		BeaconchaUrl:       beaconchaUrl,
-		DappmanagerUrl:     dappmanagerEndpoint,
-		NotifierUrl:        notifierEndpoint,
-		BrainUrl:           brainEndpoint,
+		BeaconEndpoint:      beaconEndpoint,
+		Web3SignerEndpoint:  web3SignerEndpoint,
+		Network:             network,
+		SignerDnpName:       dnpName,
+		BeaconchaUrl:        beaconchaUrl,
+		DappmanagerUrl:      dappmanagerEndpoint,
+		NotifierUrl:         notifierEndpoint,
+		BrainUrl:            brainEndpoint,
+		PollIntervalSeconds: pollIntervalSeconds,
 	}
 }
