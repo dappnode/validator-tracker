@@ -211,6 +211,36 @@ func (n *Notifier) SendBlockProposalNot(validators []domain.ValidatorIndex, epoc
 	return n.sendNotification(payload)
 }
 
+// SendCommitteeNotification sends a notification when one or more validators have been in the sync committee.
+func (n *Notifier) SendCommitteeNotification(validators []domain.ValidatorIndex, epoch domain.Epoch) error {
+	title := fmt.Sprintf("Validator(s) in Sync Committee: %s", indexesToString(validators, true))
+	body := fmt.Sprintf("🟢 Validator(s) %s have been in the sync committee at epoch %d on %s.", indexesToString(validators, true), epoch, n.Network)
+	priority := Medium
+	status := Triggered
+	isBanner := true
+	correlationId := string(domain.Notifications.Committee)
+	beaconchaUrl := n.buildBeaconchaURL(validators)
+	var callToAction *CallToAction
+	if beaconchaUrl != "" {
+		callToAction = &CallToAction{
+			Title: "Open in Explorer",
+			URL:   beaconchaUrl,
+		}
+	}
+	payload := NotificationPayload{
+		Title:         title,
+		Body:          body,
+		Category:      &n.Category,
+		Priority:      &priority,
+		IsBanner:      &isBanner,
+		DnpName:       &n.SignerDnpName,
+		Status:        &status,
+		CorrelationId: &correlationId,
+		CallToAction:  callToAction,
+	}
+	return n.sendNotification(payload)
+}
+
 // Helper to join validator indexes as comma-separated string
 // If truncate is true, only the first 10 are shown, then '...'.
 func indexesToString(indexes []domain.ValidatorIndex, truncate bool) string {
