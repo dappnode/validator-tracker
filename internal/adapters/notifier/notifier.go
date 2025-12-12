@@ -231,6 +231,12 @@ func (n *Notifier) buildBeaconchaURL(indexes []domain.ValidatorIndex) string {
 	if len(indexes) == 0 || n.BeaconchaUrl == "" {
 		return ""
 	}
+
+	// Return home path URL for gnosis network, as /dashboard?validators=... route is currently broken
+	if n.Network == "gnosis" {
+		return n.BeaconchaUrl
+	}
+
 	// Do not truncate for URLs
 	return fmt.Sprintf("%s/dashboard?validators=%s", n.BeaconchaUrl, indexesToString(indexes, false))
 }
