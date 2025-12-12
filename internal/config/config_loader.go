@@ -89,7 +89,7 @@ func LoadConfig() Config {
 	case "hoodi":
 		beaconchaUrl = "https://hoodi.beaconcha.in"
 	case "gnosis":
-		beaconchaUrl = "https://gnosischa.in"
+		beaconchaUrl = "https://beaconchain.gnosischain.com/"
 	case "lukso":
 		beaconchaUrl = "https://explorer.consensus.mainnet.lukso.network"
 	default:
