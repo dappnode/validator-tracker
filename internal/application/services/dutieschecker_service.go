@@ -24,6 +24,9 @@ type DutiesChecker struct {
 	// Tracking previous states for notifications
 	PreviouslyAllLive bool
 	PreviouslyOffline bool
+
+	// ValidatorCache is populated on each epoch change for the HTTP API
+	ValidatorCache *domain.ValidatorCache
 }
 
 func (a *DutiesChecker) Run(ctx context.Context) {
@@ -70,20 +73,42 @@ func (a *DutiesChecker) performChecks(ctx context.Context, justifiedEpoch domain
 
 	if len(pubkeys) == 0 {
 		logger.Debug("No pubkeys found in brain for epoch %d, nothing to check.", justifiedEpoch)
+		if a.ValidatorCache != nil {
+			a.ValidatorCache.Update([]domain.ValidatorInfo{}, justifiedEpoch)
+		}
 		return nil
 	}
 
-	indices, err := a.Beacon.GetValidatorIndicesByPubkeys(ctx, pubkeys)
+	validatorInfos, err := a.Beacon.GetValidatorsByPubkeys(ctx, pubkeys)
 	if err != nil {
-		logger.Error("Error fetching validator indices from beacon node: %v", err)
+		logger.Error("Error fetching validators from beacon node: %v", err)
 		return err
 	}
-	logger.Info("Found %d validator indices active", len(indices))
 
-	if len(indices) == 0 {
+	// Update validator cache for HTTP API
+	if a.ValidatorCache != nil {
+		a.ValidatorCache.Update(validatorInfos, justifiedEpoch)
+	}
+
+	if len(validatorInfos) == 0 {
 		logger.Debug("No validators found to check for epoch %d", justifiedEpoch)
 		return nil
 	}
+
+	// Extract indices for active validators only (duties checks don't apply to exited/pending)
+	var indices []domain.ValidatorIndex
+	for _, v := range validatorInfos {
+		if isActiveValidator(v.Status) {
+			indices = append(indices, v.Index)
+		}
+	}
+
+	if len(indices) == 0 {
+		logger.Debug("No active validators to check for epoch %d", justifiedEpoch)
+		return nil
+	}
+
+	logger.Info("Checking duties for %d active validators in epoch %d", len(indices), justifiedEpoch)
 
 	offline, online, allLive, err := a.checkLiveness(ctx, justifiedEpoch, indices)
 	if err != nil {
@@ -221,4 +246,14 @@ func (a *DutiesChecker) checkProposals(
 		}
 	}
 	return proposed, missed, nil
+}
+
+// isActiveValidator returns true if the validator status indicates it can have duties
+func isActiveValidator(status string) bool {
+	switch status {
+	case "active_ongoing", "active_exiting", "active_slashed":
+		return true
+	default:
+		return false
+	}
 }

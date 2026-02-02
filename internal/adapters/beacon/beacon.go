@@ -155,17 +155,18 @@ func (b *beaconAttestantClient) GetBlockAttestations(ctx context.Context, slot d
 	return attestations, nil
 }
 
-func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context, pubkeys []string) ([]domain.ValidatorIndex, error) {
+// GetValidatorsByPubkeys returns validator info (index, pubkey, status) for all provided pubkeys.
+// Only returns validators in active states (ActiveOngoing, ActiveExiting, ActiveSlashed).
+func (b *beaconAttestantClient) GetValidatorsByPubkeys(ctx context.Context, pubkeys []string) ([]domain.ValidatorInfo, error) {
 	if len(pubkeys) == 0 {
-		logger.Debug("Called GetValidatorIndicesByPubkeys with no pubkeys, nothing to check")
+		logger.Debug("Called GetValidatorsByPubkeys with no pubkeys, nothing to check")
 		return nil, nil
 	}
 
 	var beaconPubkeys []phase0.BLSPubKey
 
-	// Convert hex pubkeys to BLS pubkeys
 	for _, hexPubkey := range pubkeys {
-		// Remove "0x" prefix if present
+		// Strip "0x" prefix if present - hex.DecodeString doesn't accept it
 		if len(hexPubkey) >= 2 && hexPubkey[:2] == "0x" {
 			hexPubkey = hexPubkey[2:]
 		}
@@ -181,26 +182,34 @@ func (b *beaconAttestantClient) GetValidatorIndicesByPubkeys(ctx context.Context
 		beaconPubkeys = append(beaconPubkeys, blsPubkey)
 	}
 
-	// Only get validators in active states
-	// TODO: why do I need apiv1 for this struct? is there something newer?
+	// Get all validators regardless of state
 	validators, err := b.client.Validators(ctx, &api.ValidatorsOpts{
 		State:   "justified",
 		PubKeys: beaconPubkeys,
-		ValidatorStates: []v1.ValidatorState{
-			v1.ValidatorStateActiveOngoing,
-			v1.ValidatorStateActiveExiting,
-			v1.ValidatorStateActiveSlashed,
-		},
 	})
 	if err != nil {
 		return nil, err
 	}
 
-	var indices []domain.ValidatorIndex
+	var result []domain.ValidatorInfo
 	for _, v := range validators.Data {
-		indices = append(indices, domain.ValidatorIndex(v.Index))
+		result = append(result, domain.ValidatorInfo{
+			Index:   domain.ValidatorIndex(v.Index),
+			Balance: uint64(v.Balance),
+			Status:  v.Status.String(),
+			Validator: domain.ValidatorData{
+				Pubkey:                     fmt.Sprintf("0x%x", v.Validator.PublicKey[:]),
+				WithdrawalCredentials:      fmt.Sprintf("0x%x", v.Validator.WithdrawalCredentials), // format as hex string
+				EffectiveBalance:           uint64(v.Validator.EffectiveBalance),
+				Slashed:                    v.Validator.Slashed,
+				ActivationEligibilityEpoch: domain.Epoch(v.Validator.ActivationEligibilityEpoch),
+				ActivationEpoch:            domain.Epoch(v.Validator.ActivationEpoch),
+				ExitEpoch:                  domain.Epoch(v.Validator.ExitEpoch),
+				WithdrawableEpoch:          domain.Epoch(v.Validator.WithdrawableEpoch),
+			},
+		})
 	}
-	return indices, nil
+	return result, nil
 }
 
 // GetProposerDuties retrieves proposer duties for the given epoch and validator indices.
