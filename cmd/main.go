@@ -3,12 +3,14 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"os"
 	"os/signal"
 	"sync"
 	"syscall"
 	"time"
 
+	"github.com/dappnode/validator-tracker/internal/adapters/api"
 	"github.com/dappnode/validator-tracker/internal/adapters/beacon"
 	"github.com/dappnode/validator-tracker/internal/adapters/brain"
 	"github.com/dappnode/validator-tracker/internal/adapters/dappmanager"
@@ -56,6 +58,9 @@ func main() {
 	defer cancel()
 	var wg sync.WaitGroup
 
+	// Initialize shared validator cache for HTTP API
+	validatorCache := domain.NewValidatorCache()
+
 	// Start the duties checker service in a goroutine
 	dutiesChecker := &services.DutiesChecker{
 		Beacon:            beacon,
@@ -66,11 +71,32 @@ func main() {
 		SlashedNotified:   make(map[domain.ValidatorIndex]bool),
 		PreviouslyAllLive: true, // assume all validators were live at start
 		PreviouslyOffline: false,
+		ValidatorCache:    validatorCache,
 	}
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		dutiesChecker.Run(ctx)
+	}()
+
+	// Start HTTP API server
+	apiServer := api.NewServer(":8080", validatorCache)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		if err := apiServer.Start(); err != nil && err != http.ErrServerClosed {
+			logger.Error("HTTP API server error: %v", err)
+		}
+	}()
+
+	// Graceful shutdown for HTTP server
+	go func() {
+		<-ctx.Done()
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer shutdownCancel()
+		if err := apiServer.Shutdown(shutdownCtx); err != nil {
+			logger.Error("HTTP API server shutdown error: %v", err)
+		}
 	}()
 
 	// Handle graceful shutdown
